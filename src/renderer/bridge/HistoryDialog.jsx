@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatElapsed } from "../shared/format.js";
 import Money from "../shared/Money.jsx";
 import { DEFAULT_ACCENT } from "./ProfilesRail.jsx";
@@ -13,14 +13,19 @@ export default function HistoryDialog({ fx, onClose }) {
   const now = Date.now();
   const { bridge } = window.hekaton;
 
+  // onClose is recreated on every Bridge broadcast; keep it in a ref so the
+  // list loads once per opening.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
   useEffect(() => {
     bridge.history().then(setEntries);
     const onKey = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") closeRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [bridge, onClose]);
+  }, [bridge]);
 
   const needle = filter.trim().toLowerCase();
   const shown = entries.filter(

@@ -24,22 +24,24 @@ function handleKey(term, event) {
   return true;
 }
 
-export default function Terminal({ theme, platform, osBuild }) {
+export default function Terminal({ theme, fontFamily, fontSize, platform, osBuild }) {
   const hostRef = useRef(null);
   const termRef = useRef(null);
+  const fitRef = useRef(null);
 
   useEffect(() => {
     const term = new XTerm({
       allowProposedApi: true,
       cursorBlink: true,
-      fontFamily: "'Cascadia Mono', Consolas, Menlo, monospace",
-      fontSize: 14,
+      fontFamily,
+      fontSize,
       scrollback: 10000,
       theme,
       ...(platform === "win32" && { windowsPty: { backend: "conpty", buildNumber: osBuild } }),
     });
     termRef.current = term;
     const fit = new FitAddon();
+    fitRef.current = fit;
     term.loadAddon(fit);
     term.open(hostRef.current);
     try {
@@ -78,6 +80,14 @@ export default function Terminal({ theme, platform, osBuild }) {
   useEffect(() => {
     if (termRef.current) termRef.current.options.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) return;
+    term.options.fontFamily = fontFamily;
+    term.options.fontSize = fontSize;
+    fitRef.current?.fit();
+  }, [fontFamily, fontSize]);
 
   return <div className="terminal-host" ref={hostRef} />;
 }

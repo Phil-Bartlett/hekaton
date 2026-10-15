@@ -66,11 +66,11 @@ export function createSessionManager(emit, telemetryServer) {
     emit("update", session.id, publicView(session));
   }
 
-  function launch(profile) {
+  function launch(profile, { binary } = {}) {
     const id = randomUUID();
     const sessionId = profile.resume ? profile.resume : randomUUID();
     const settingsPath = writeSettings(id);
-    const term = pty.spawn(claudeBinary(), claudeArgs({ ...profile, sessionId, settingsPath }), {
+    const term = pty.spawn(claudeBinary(binary), claudeArgs({ ...profile, sessionId, settingsPath }), {
       name: "xterm-256color",
       cols: DEFAULT_COLS,
       rows: DEFAULT_ROWS,

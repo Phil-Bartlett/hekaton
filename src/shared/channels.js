@@ -30,5 +30,7 @@ export const CH = Object.freeze({
   referenceList: "reference:list",
   referenceOpen: "reference:open",
   settingsSave: "settings:save",
+  appOpenDataFolder: "app:open-data-folder",
   dialogPickFolder: "dialog:pick-folder",
+  dialogPickFile: "dialog:pick-file",
 });

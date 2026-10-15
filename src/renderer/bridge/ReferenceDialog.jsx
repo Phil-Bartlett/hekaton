@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const TABS = [
   { kind: "command", label: "Slash Commands" },
@@ -50,14 +50,19 @@ export default function ReferenceDialog({ initialKind, settings, onClose }) {
     bridge.reference().then(setEntries);
   }, [bridge]);
 
+  // The Bridge re-renders on every state broadcast with a fresh onClose, so
+  // the callback lives in a ref and the scan runs once per opening.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
   useEffect(() => {
     rescan();
     const onKey = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") closeRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [rescan, onClose]);
+  }, [rescan]);
 
   async function addPath() {
     const folder = await bridge.pickFolder();

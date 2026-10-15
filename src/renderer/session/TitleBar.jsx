@@ -41,7 +41,7 @@ function Control({ icon, label, active, onClick }) {
 
 export default function TitleBar({ session, chrome, trayOpen, onToggleTray, onTogglePin, onToggleLock }) {
   const { profile, telemetry } = session;
-  const { label, color } = statusAppearance(telemetry.state);
+  const { label, color } = statusAppearance(telemetry.state, session.settings?.statusAppearance);
   return (
     <header className="title-bar">
       <span className="title-bar__name">{profile.name}</span>

@@ -1,4 +1,4 @@
-import { app, dialog, ipcMain, shell } from "electron";
+import { app, dialog, globalShortcut, ipcMain, shell } from "electron";
 import os from "node:os";
 import { CH } from "../shared/channels.js";
 import { createFx } from "./fx.js";
@@ -96,7 +96,7 @@ function onSessionEvent(event, id, payload) {
   }
   if (event === "update") {
     logUpdate(payload);
-    windows.sendToSession(id, CH.sessionUpdate, { ...payload, fx: fx.current() });
+    windows.sendToSession(id, CH.sessionUpdate, { ...payload, fx: fx.current(), settings: store.settings() });
     broadcast();
   }
   if (event === "activity") windows.sendToSession(id, CH.sessionActivity, payload);
@@ -109,8 +109,20 @@ function forgetSession(id) {
   recorded.delete(id);
 }
 
+// The global hotkey raises the Bridge from anywhere; an invalid accelerator
+// is reported back to Settings rather than silently ignored.
+function applyHotkey(accelerator) {
+  globalShortcut.unregisterAll();
+  if (!accelerator) return true;
+  try {
+    return globalShortcut.register(accelerator, () => windows.createBridgeWindow());
+  } catch {
+    return false;
+  }
+}
+
 function launchProfile(profile) {
-  const session = sessions.launch(profile);
+  const session = sessions.launch(profile, { binary: store.settings().claudeBinary });
   const win = windows.createSessionWindow(session, computeBounds(profile, listDisplays()));
   win.on("closed", () => {
     forgetSession(session.id);
@@ -152,7 +164,13 @@ function fromBridge(event) {
 
 ipcMain.handle(CH.sessionGet, (event, id) =>
   ownsInstance(event, id)
-    ? { ...sessions.get(id), osBuild: OS_BUILD, platform: process.platform, fx: fx.current() }
+    ? {
+        ...sessions.get(id),
+        osBuild: OS_BUILD,
+        platform: process.platform,
+        fx: fx.current(),
+        settings: store.settings(),
+      }
     : null,
 );
 ipcMain.handle(CH.ptyAttach, (event, id) => (ownsInstance(event, id) ? sessions.attach(id) : null));
@@ -219,8 +237,13 @@ ipcMain.handle(CH.referenceOpen, (event, file) =>
 ipcMain.handle(CH.settingsSave, (event, patch) => {
   if (!fromBridge(event) || !patch || typeof patch !== "object") return null;
   const saved = store.saveSettings(patch);
+  const hotkeyOk = "hotkey" in patch ? applyHotkey(saved.hotkey) : true;
   broadcast();
-  return saved;
+  // Session windows restyle live: fonts, status colours and theme all come from here.
+  for (const session of sessions.list()) {
+    windows.sendToSession(session.id, CH.sessionUpdate, { ...session, fx: fx.current(), settings: saved });
+  }
+  return { ...saved, hotkeyOk };
 });
 ipcMain.handle(CH.historyResume, (event, entry) => (fromBridge(event) ? resumeFromHistory(entry) : null));
 ipcMain.handle(CH.dialogPickFolder, async (event) => {
@@ -228,6 +251,12 @@ ipcMain.handle(CH.dialogPickFolder, async (event) => {
   const result = await dialog.showOpenDialog(windows.bridgeWindow(), { properties: ["openDirectory"] });
   return result.canceled ? null : result.filePaths[0];
 });
+ipcMain.handle(CH.dialogPickFile, async (event) => {
+  if (!fromBridge(event)) return null;
+  const result = await dialog.showOpenDialog(windows.bridgeWindow(), { properties: ["openFile"] });
+  return result.canceled ? null : result.filePaths[0];
+});
+ipcMain.handle(CH.appOpenDataFolder, (event) => (fromBridge(event) ? shell.openPath(app.getPath("userData")) : null));
 
 app.on("second-instance", () => windows.createBridgeWindow());
 
@@ -248,6 +277,7 @@ app.whenReady().then(async () => {
     broadcast();
   });
   windows.createBridgeWindow();
+  applyHotkey(store.settings().hotkey);
 
   // `hekaton --launch=<profile name or id>` opens a session straight away.
   const launch = argValue("launch");
@@ -259,4 +289,5 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => app.quit());
+app.on("will-quit", () => globalShortcut.unregisterAll());
 app.on("before-quit", () => sessions?.killAll());

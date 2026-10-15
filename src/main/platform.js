@@ -14,8 +14,10 @@ export function resourcePath(...segments) {
 }
 
 // The native installer puts the binary in ~/.local/bin on every platform;
-// any other install (npm global, Homebrew) is found through PATH.
-export function claudeBinary() {
+// any other install (npm global, Homebrew) is found through PATH, unless the
+// user pointed Settings at a specific executable.
+export function claudeBinary(override) {
+  if (override && existsSync(override)) return override;
   const native = path.join(os.homedir(), ".local", "bin", IS_WINDOWS ? "claude.exe" : "claude");
   return existsSync(native) ? native : "claude";
 }

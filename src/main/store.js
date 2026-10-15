@@ -24,6 +24,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   terminal: { fontFamily: "", fontSize: 14 },
   hotkey: "",
   theme: "dark",
+  customThemes: {},
+  claudeBinary: "",
 });
 
 // Launch profiles and app settings, each one JSON file in the user-data folder.

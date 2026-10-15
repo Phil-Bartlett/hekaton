@@ -3,8 +3,8 @@ import Money from "../shared/Money.jsx";
 import { statusAppearance } from "../shared/statusStates.js";
 import { DEFAULT_ACCENT } from "./ProfilesRail.jsx";
 
-function StateBar({ state, detail, since, now }) {
-  const { label, color } = statusAppearance(state);
+function StateBar({ state, detail, since, now, appearance }) {
+  const { label, color } = statusAppearance(state, appearance);
   return (
     <div className="card__state" style={{ background: color }}>
       <span className="card__state-label">
@@ -29,7 +29,7 @@ function ContextBar({ pct }) {
   );
 }
 
-export default function SessionCard({ session, now, fx }) {
+export default function SessionCard({ session, now, fx, appearance }) {
   const { id, profile, telemetry } = session;
   const { bridge } = window.hekaton;
   return (
@@ -38,7 +38,13 @@ export default function SessionCard({ session, now, fx }) {
         <span className="card__name">{profile.name}</span>
         <Money usd={telemetry.totalCostUsd} fx={fx} className="card__cost" />
       </header>
-      <StateBar state={telemetry.state} detail={telemetry.currentTool} since={telemetry.since} now={now} />
+      <StateBar
+        state={telemetry.state}
+        detail={telemetry.currentTool}
+        since={telemetry.since}
+        now={now}
+        appearance={appearance}
+      />
       <ContextBar pct={telemetry.contextPct} />
       <p className="card__prompt" title={telemetry.lastPrompt ?? ""}>
         {telemetry.lastPrompt ?? <em>No prompt yet</em>}
@@ -64,7 +70,7 @@ export default function SessionCard({ session, now, fx }) {
 const EXTERNAL_STATES = { idle: "idle", busy: "running" };
 
 // A Claude Code session running on this machine that Hekaton did not launch.
-export function ExternalSessionCard({ session, now }) {
+export function ExternalSessionCard({ session, now, appearance }) {
   const name = session.name ?? session.cwd?.split(/[\\/]/).filter(Boolean).pop() ?? `pid ${session.pid}`;
   return (
     <article className="card card--external">
@@ -76,6 +82,7 @@ export function ExternalSessionCard({ session, now }) {
         state={EXTERNAL_STATES[session.status] ?? session.status ?? "idle"}
         since={session.statusSince}
         now={now}
+        appearance={appearance}
       />
       <p className="card__prompt" title={session.cwd ?? ""}>
         {session.cwd}

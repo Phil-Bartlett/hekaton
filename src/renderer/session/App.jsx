@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
+import { applyTheme, resolveTheme } from "../shared/themes.js";
 import ActivityTray from "./ActivityTray.jsx";
 import Terminal from "./Terminal.jsx";
 import TitleBar from "./TitleBar.jsx";
 
 const DEFAULT_ACCENT = "#3b82f6";
+const DEFAULT_FONT = "'Cascadia Mono', Consolas, Menlo, monospace";
 
-const TERMINAL_THEME = {
-  background: "#1a1a1a",
-  foreground: "#d4d4d4",
-  cursor: "#d4d4d4",
-  selectionBackground: "#3a3d41",
-};
+function terminalTheme(theme) {
+  return {
+    background: theme.bg,
+    foreground: theme.fg,
+    cursor: theme.fg,
+    selectionBackground: "#3a3d41",
+  };
+}
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -42,9 +46,13 @@ export default function App() {
     root.style.setProperty("--accent", session.profile.accent ?? DEFAULT_ACCENT);
     root.dataset.platform = session.platform;
     root.dataset.colorScope = session.profile.colorScope ?? "border+title";
+    applyTheme(resolveTheme(session.settings?.theme, session.settings?.customThemes));
   }, [session]);
 
   if (!session) return null;
+
+  const theme = resolveTheme(session.settings?.theme, session.settings?.customThemes);
+  const font = session.settings?.terminal ?? {};
 
   return (
     <>
@@ -58,7 +66,13 @@ export default function App() {
       />
       <main className="session-body">
         <div className="terminal-pane">
-          <Terminal theme={TERMINAL_THEME} platform={session.platform} osBuild={session.osBuild} />
+          <Terminal
+            theme={terminalTheme(theme)}
+            fontFamily={font.fontFamily || DEFAULT_FONT}
+            fontSize={font.fontSize || 14}
+            platform={session.platform}
+            osBuild={session.osBuild}
+          />
           {exitCode !== null && <div className="exit-banner">Claude exited with code {exitCode}</div>}
         </div>
         {trayOpen && <ActivityTray turns={activity} fx={session.fx} />}
