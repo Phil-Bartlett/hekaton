@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { STATUS_STATES } from "../shared/statusStates.js";
-import { THEMES, themeIssues } from "../shared/themes.js";
+import { THEMES, applyTheme, resolveTheme, themeIssues } from "../shared/themes.js";
 
 const TABS = [
   ["general", "General"],
@@ -348,12 +348,22 @@ export default function SettingsView({ settings, dataFolder, onClose }) {
   const [hotkeyError, setHotkeyError] = useState(false);
   const patch = (changes) => setDraft((current) => ({ ...current, ...changes }));
 
+  // The Bridge previews the theme being chosen; leaving without saving puts
+  // the saved one back. Session windows change only on Save.
+  const keepRef = useRef(settings);
+  keepRef.current = settings;
+  useEffect(() => {
+    applyTheme(resolveTheme(draft.theme, draft.customThemes));
+  }, [draft.theme, draft.customThemes]);
+  useEffect(() => () => applyTheme(resolveTheme(keepRef.current.theme, keepRef.current.customThemes)), []);
+
   async function save() {
     const result = await window.hekaton.bridge.saveSettings(draft);
     if (result?.hotkeyOk === false) {
       setHotkeyError(true);
       return;
     }
+    keepRef.current = draft;
     onClose();
   }
 
