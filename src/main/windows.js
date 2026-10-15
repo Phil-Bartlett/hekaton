@@ -195,16 +195,29 @@ export function createWindowManager({ onSessionBounds }) {
 
   // Windows only re-fits a window to a new display's DPI during a manual
   // drag, so every programmatic move clamps the window to the destination
-  // work area itself, and keeps it fully on that display.
+  // work area itself and keeps it fully on that display. The size is applied
+  // in a second step: Electron scales a bounds call by the DPI of the display
+  // the window is leaving, and Windows rescales it again on arrival, so a
+  // single call lands at the wrong size when the two displays differ.
   function fitToDisplay(win, display, position) {
     const area = display.workArea;
     const current = win.getBounds();
     const width = Math.min(current.width, area.width);
     const height = Math.min(current.height, area.height);
     const wanted = position ?? { x: area.x + (area.width - width) / 2, y: area.y + (area.height - height) / 2 };
-    const x = Math.min(Math.max(wanted.x, area.x), area.x + area.width - width);
-    const y = Math.min(Math.max(wanted.y, area.y), area.y + area.height - height);
-    win.setBounds({ x: Math.round(x), y: Math.round(y), width, height });
+    const x = Math.round(Math.min(Math.max(wanted.x, area.x), area.x + area.width - width));
+    const y = Math.round(Math.min(Math.max(wanted.y, area.y), area.y + area.height - height));
+    const target = { x, y, width, height };
+    win.setPosition(x, y);
+    const settle = (attempt) => {
+      if (win.isDestroyed()) return;
+      const now = win.getBounds();
+      const matches = ["x", "y", "width", "height"].every((key) => Math.abs(now[key] - target[key]) <= 1);
+      if (matches) return;
+      win.setBounds(target);
+      if (attempt < 3) setTimeout(() => settle(attempt + 1), 80);
+    };
+    setTimeout(() => settle(0), 50);
   }
 
   function centerSession(id) {
