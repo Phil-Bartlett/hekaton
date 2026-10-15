@@ -8,6 +8,7 @@ import { claudeArgs, launchEnv, launchName, sessionSettings } from "./launch.js"
 import { claudeBinary, resourcePath } from "./platform.js";
 import { applyExit, applyHook, applyStatus, initialTelemetry } from "./state.js";
 import { tailTranscript } from "./transcript.js";
+import { ensureWorktree } from "./worktree.js";
 
 const DEFAULT_COLS = 120;
 const DEFAULT_ROWS = 30;
@@ -71,6 +72,12 @@ export function createSessionManager(emit, telemetryServer) {
     const id = givenId ?? randomUUID();
     const sessionId = profile.resume ? profile.resume : randomUUID();
     const settingsPath = writeSettings(id);
+    // A fresh launch with the worktree flag runs in its own checkout; a resume
+    // already has the worktree recorded as its cwd and must not make another.
+    if (profile.worktree && !profile.resume) {
+      const worktree = ensureWorktree(profile.cwd, { profileName: profile.name, id });
+      if (worktree.created) profile = { ...profile, cwd: worktree.dir };
+    }
     const args = claudeArgs({ ...profile, name: launchName(profile), sessionId, settingsPath });
     const term = pty.spawn(claudeBinary(binary), args, {
       name: "xterm-256color",

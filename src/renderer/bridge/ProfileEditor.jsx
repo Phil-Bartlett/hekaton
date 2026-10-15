@@ -98,6 +98,7 @@ export default function ProfileEditor({ profile, displays, onClose }) {
     confirmClose: false,
     skipPermissions: false,
     remoteControl: false,
+    worktree: false,
     addDirs: [],
     ...profile,
   });
@@ -247,6 +248,10 @@ export default function ProfileEditor({ profile, displays, onClose }) {
             <label>
               <input type="checkbox" checked={form.confirmClose} onChange={setFlag("confirmClose")} /> Confirm before
               closing
+            </label>
+            <label>
+              <input type="checkbox" checked={form.worktree} onChange={setFlag("worktree")} /> Launch in a new git
+              worktree (own branch and checkout, for parallel work)
             </label>
             <label>
               <input type="checkbox" checked={form.remoteControl} onChange={setFlag("remoteControl")} /> Remote Control:
