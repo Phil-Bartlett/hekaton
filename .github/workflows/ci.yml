@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-test:
+    name: Lint and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      # The pure modules under test never touch node-pty, so its native build
+      # is skipped here and exercised by the bundle job instead.
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Prettier
+        run: npx prettier --check .
+
+      - name: ESLint
+        run: npx eslint .
+
+      - name: Tests
+        run: npx vitest run
+
+      - name: shellcheck
+        run: shellcheck scripts/*.sh
+
+  bundle:
+    name: Bundle on Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies (with node-pty prebuild)
+        run: npm ci
+
+      - name: Build bundles
+        run: node scripts/build.mjs

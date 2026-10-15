@@ -2,7 +2,7 @@
   "name": "hekaton",
   "version": "0.1.0",
   "private": true,
-  "description": "Hekaton — a window manager and live dashboard for many Claude Code sessions",
+  "description": "Hekaton \u2014 a window manager and live dashboard for many Claude Code sessions",
   "author": "Phil Bartlett",
   "license": "MIT",
   "main": "dist/main.cjs",
@@ -14,7 +14,10 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "rebuild": "electron-rebuild -f -w node-pty"
+    "rebuild": "electron-rebuild -f -w node-pty",
+    "dist": "node scripts/build.mjs && electron-builder --win nsis",
+    "dist:mac": "node scripts/build.mjs && electron-builder --mac dmg",
+    "icon": "electron scripts/icon.cjs"
   },
   "dependencies": {
     "@xterm/addon-fit": "0.11.0",
@@ -28,10 +31,70 @@
   "devDependencies": {
     "@electron/rebuild": "^4.2.1",
     "electron": "44.7.2",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
     "prettier": "^3.9.9",
     "vitest": "^5.0.3"
+  },
+  "build": {
+    "appId": "io.github.philbartlett.hekaton",
+    "productName": "Hekaton",
+    "copyright": "Copyright \u00a9 2026 Phil Bartlett",
+    "directories": {
+      "output": "out",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "scripts/statusline-relay.sh",
+        "to": "scripts/statusline-relay.sh"
+      }
+    ],
+    "asarUnpack": [
+      "node_modules/node-pty/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Hekaton-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Hekaton"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "artifactName": "Hekaton-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    },
+    "npmRebuild": false,
+    "nodeGypRebuild": false
   }
 }

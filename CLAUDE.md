@@ -36,12 +36,13 @@ npm run rebuild    # electron-rebuild node-pty, only if the prebuilt binary does
 
 ## Status
 
-Phases 1 to 4 verified 2026-10-15: embedded terminal, telemetry (hooks + statusline relay + state
-machine), the Bridge (profiles rail, profile editor, live session cards, external sessions from
-`~/.claude/sessions`), and session-window chrome (accent scope, pin, close lock, confirm-close, activity
-tray fed by the transcript tailer). `hekaton --launch=<profile>` opens a profile from the command line.
-Next: Phase 5 (monitor / size / position in the profile editor, monitor map, session history with
-resume), then Phase 6 (usage panel, reference browser, settings, themes, installer).
+Phases 1 to 6c verified by Phil on 2026-10-15: embedded terminal, telemetry (hooks + statusline relay +
+state machine), the Bridge (profiles rail, profile editor with monitor / size / position / flags,
+live session cards, external sessions, monitor map, history + resume, usage panel, reference browser,
+settings with WCAG-checked themes, Ctrl+K palette), and session-window chrome (accent scope, pin,
+close lock, confirm-close, activity tray, Ctrl+F find). Costs show in pounds with the dollar figure
+on hover. `hekaton --launch=<profile>` opens a profile from the command line. Next: the installer
+(Phase 6d), then the macOS build on Phil's AIstudio box.
 
 Traps:
 
