@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { applyTheme, resolveTheme } from "../shared/themes.js";
 import ActivityTray from "./ActivityTray.jsx";
+import FindBar from "./FindBar.jsx";
 import Terminal from "./Terminal.jsx";
 import TitleBar from "./TitleBar.jsx";
 
@@ -21,7 +22,9 @@ export default function App() {
   const [activity, setActivity] = useState([]);
   const [chrome, setChrome] = useState({ pinned: false, locked: false });
   const [trayOpen, setTrayOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
   const [exitCode, setExitCode] = useState(null);
+  const searchRef = useRef(null);
 
   useEffect(() => {
     const { hekaton } = window;
@@ -66,12 +69,15 @@ export default function App() {
       />
       <main className="session-body">
         <div className="terminal-pane">
+          {findOpen && <FindBar search={searchRef} onClose={() => setFindOpen(false)} />}
           <Terminal
             theme={terminalTheme(theme)}
             fontFamily={font.fontFamily || DEFAULT_FONT}
             fontSize={font.fontSize || 14}
             platform={session.platform}
             osBuild={session.osBuild}
+            searchRef={searchRef}
+            onFind={() => setFindOpen(true)}
           />
           {exitCode !== null && <div className="exit-banner">Claude exited with code {exitCode}</div>}
         </div>

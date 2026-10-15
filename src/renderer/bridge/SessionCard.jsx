@@ -4,9 +4,9 @@ import { statusAppearance } from "../shared/statusStates.js";
 import { DEFAULT_ACCENT } from "./ProfilesRail.jsx";
 
 function StateBar({ state, detail, since, now, appearance }) {
-  const { label, color } = statusAppearance(state, appearance);
+  const { label, color, text } = statusAppearance(state, appearance);
   return (
-    <div className="card__state" style={{ background: color }}>
+    <div className="card__state" style={{ background: color, color: text }}>
       <span className="card__state-label">
         {label}
         {detail && <span className="card__state-detail"> · {detail}</span>}

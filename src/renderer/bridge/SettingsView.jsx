@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { STATUS_STATES } from "../shared/statusStates.js";
-import { THEMES } from "../shared/themes.js";
+import { THEMES, themeIssues } from "../shared/themes.js";
 
 const TABS = [
   ["general", "General"],
@@ -253,11 +253,22 @@ function ThemeTab({ draft, patch }) {
               />
             </label>
           ))}
+          {themeIssues(editing).map((issue) => (
+            <span key={issue} className="editor__error" role="alert">
+              {issue}
+            </span>
+          ))}
           <span className="field__row">
             <button type="button" onClick={() => setEditing(null)}>
               Cancel
             </button>
-            <button type="button" className="button--primary" onClick={saveCustom}>
+            <button
+              type="button"
+              className="button--primary"
+              onClick={saveCustom}
+              disabled={themeIssues(editing).length > 0}
+              title={themeIssues(editing).length > 0 ? "Fix the contrast problems first" : "Save this theme"}
+            >
               Save theme
             </button>
           </span>

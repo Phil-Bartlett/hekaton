@@ -1,8 +1,18 @@
+/* Theme variables. themes.js rewrites these at runtime; the values here are
+   the Dark theme so the page never renders unstyled. */
 :root {
   --bg: #1a1a1a;
   --bg-elevated: #242424;
+  --surface: #1f1f1f;
+  --control: #2a2a2a;
+  --control-hover: #353535;
+  --control-active: #424242;
+  --border: #2e2e2e;
+  --border-strong: #444444;
+  --track: #3a3a3a;
+  --tray: #141414;
   --fg: #d4d4d4;
-  --fg-muted: #8a8a8a;
+  --fg-muted: #929292;
   --accent: #3b82f6;
   --title-bar-height: 36px;
   color-scheme: dark;
@@ -78,7 +88,7 @@ body {
 }
 
 .caption__button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--control-hover);
 }
 
 .caption__button--close:hover {

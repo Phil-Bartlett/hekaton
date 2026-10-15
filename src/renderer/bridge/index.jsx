@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import CommandPalette from "./CommandPalette.jsx";
 import HistoryDialog from "./HistoryDialog.jsx";
 import MonitorMap from "./MonitorMap.jsx";
 import ProfileEditor from "./ProfileEditor.jsx";
@@ -115,11 +116,23 @@ function App() {
   const [view, setView] = useState({ name: "dashboard" });
   const [historyOpen, setHistoryOpen] = useState(false);
   const [referenceKind, setReferenceKind] = useState(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [chrome, setChrome] = useState({ maximized: false });
 
   useEffect(() => {
     document.documentElement.dataset.window = "bridge";
-    return window.hekaton.window.onChrome(setChrome);
+    const onKey = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    const offChrome = window.hekaton.window.onChrome(setChrome);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      offChrome();
+    };
   }, []);
 
   useEffect(() => {
@@ -187,6 +200,7 @@ function App() {
         </nav>
         <span className="status-bar__version">v{state.version}</span>
       </footer>
+      {paletteOpen && <CommandPalette state={state} onClose={() => setPaletteOpen(false)} />}
       {historyOpen && <HistoryDialog fx={state.fx} onClose={() => setHistoryOpen(false)} />}
       {referenceKind && (
         <ReferenceDialog initialKind={referenceKind} settings={state.settings} onClose={() => setReferenceKind(null)} />

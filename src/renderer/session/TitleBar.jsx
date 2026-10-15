@@ -41,11 +41,11 @@ function Control({ icon, label, active, onClick }) {
 
 export default function TitleBar({ session, chrome, trayOpen, onToggleTray, onTogglePin, onToggleLock }) {
   const { profile, telemetry } = session;
-  const { label, color } = statusAppearance(telemetry.state, session.settings?.statusAppearance);
+  const { label, color, text } = statusAppearance(telemetry.state, session.settings?.statusAppearance);
   return (
     <header className="title-bar">
       <span className="title-bar__name">{profile.name}</span>
-      <span className="state-pill" style={{ background: color }}>
+      <span className="state-pill" style={{ background: color, color: text }}>
         {label}
         {telemetry.currentTool && <span className="state-pill__tool">{telemetry.currentTool}</span>}
       </span>

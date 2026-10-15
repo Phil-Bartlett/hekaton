@@ -33,13 +33,13 @@
 }
 
 .title-bar__control:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--control-hover);
   color: var(--fg);
 }
 
 .title-bar__control.is-active {
   color: var(--fg);
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--control-active);
 }
 
 /* ---- Body: terminal + optional tray ------------------------------------- */
@@ -57,8 +57,8 @@
 .activity-tray {
   flex: none;
   width: 360px;
-  border-left: 1px solid #2e2e2e;
-  background: #141414;
+  border-left: 1px solid var(--border);
+  background: var(--tray);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -98,7 +98,7 @@
 .turn__prompt {
   margin: 0;
   padding: 8px 10px;
-  background: #1f1f1f;
+  background: var(--surface);
   border-radius: 4px;
   font-size: 13px;
   line-height: 1.35;
@@ -123,7 +123,7 @@
   gap: 6px;
   padding: 4px 6px;
   border-radius: 4px;
-  background: #1f1f1f;
+  background: var(--surface);
   font-size: 12px;
   font-family: "Cascadia Mono", Consolas, Menlo, monospace;
 }
@@ -177,4 +177,40 @@
 .chip--cost {
   background: #14532d;
   color: #86efac;
+}
+
+/* ---- Find bar (Ctrl/Cmd+F or +K) ---------------------------------------- */
+
+.find-bar {
+  position: absolute;
+  top: 8px;
+  right: 20px;
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.find-bar__input {
+  width: 220px;
+  padding: 4px 8px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+}
+
+.find-bar button {
+  width: 28px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--control);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  cursor: pointer;
 }
