@@ -31,6 +31,16 @@ Sessions started outside Hekaton appear too, read from Claude Code's own session
   because the transcript stays on that machine.
 - Terminal: Shift+Enter for a newline, Ctrl+F find, links open in the browser, extra `--add-dir`
   folders per profile.
+- Artifacts and links: published claude.ai artifacts and pull requests a session produces show as
+  clickable chips in its activity tray and on its Bridge card.
+- Worktrees: a profile can launch in its own git worktree and branch, so parallel sessions edit
+  separate checkouts.
+- Naming: cards take Claude's own session name, falling back to its generated title, so each reads as
+  its subject rather than just the profile name.
+- Organising: cards sort by manual order, profile, project (grouped under a per-repository header) or
+  recency, as tiles, compact tiles or a list.
+- Cost: the activity tray shows a whole-session estimate from the price table beside Claude's own
+  reported figure, each labelled for what it is.
 
 ## Running it
 
