@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "description": "Hekaton \u2014 a window manager and live dashboard for many Claude Code sessions",
-  "author": "Phil Bartlett",
+  "homepage": "https://github.com/Phil-Bartlett/hekaton",
+  "author": {
+    "name": "Phil Bartlett",
+    "email": "Phil-Bartlett@users.noreply.github.com"
+  },
   "license": "MIT",
   "main": "dist/main.cjs",
   "type": "module",
