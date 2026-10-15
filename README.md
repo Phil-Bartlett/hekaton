@@ -18,6 +18,19 @@ Sessions started outside Hekaton appear too, read from Claude Code's own session
   sessions.
 - Telemetry comes from Claude Code itself: lifecycle hooks and the statusline, injected per session with
   `--settings`, so nothing in `~/.claude` is modified.
+- Saved cards: a session that ends, or the app closing, leaves a card that resumes the same conversation
+  in the same place. Cards can be moved between profiles and reordered. A conversation Claude ran on its
+  own can be adopted onto a profile; a card whose conversation is still running outside Hekaton says so
+  and offers to end that copy instead of starting a second one.
+- Attention: an OS notification and a taskbar flash when an unfocused session stops for an approval or
+  finishes a turn. A tray icon keeps the app running with every window closed; it can start at sign-in.
+- Remote Control: a profile flag launches with `--remote-control`, so the Claude app on a phone can
+  drive the session; the card shows a Remote badge while it is connected.
+- Shared data folder: profiles, settings, cards and history can live in a OneDrive or Syncthing folder
+  and follow you between machines. A card made on another machine names it and resumes only there,
+  because the transcript stays on that machine.
+- Terminal: Shift+Enter for a newline, Ctrl+F find, links open in the browser, extra `--add-dir`
+  folders per profile.
 
 ## Running it
 
