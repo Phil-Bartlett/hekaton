@@ -113,7 +113,11 @@ export default function SessionCard({ session, now, fx, appearance, profiles, sh
   return (
     <article className={`card${dragClass}`} style={{ "--accent": profile.accent ?? DEFAULT_ACCENT }} {...handlers}>
       <header className="card__head">
-        <CardName profileName={profile.name} sessionName={telemetry.sessionName} showNames={showNames} />
+        <CardName
+          profileName={profile.name}
+          sessionName={telemetry.sessionName || session.activity?.title}
+          showNames={showNames}
+        />
         {telemetry.remoteControlId && (
           <span className="card__badge" title="Connected to Remote Control: the Claude app can drive this session">
             Remote

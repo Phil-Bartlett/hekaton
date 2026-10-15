@@ -19,7 +19,14 @@ function terminalTheme(theme) {
 
 export default function App() {
   const [session, setSession] = useState(null);
-  const [activity, setActivity] = useState({ turns: [], totalCostUsd: 0, unpriced: false, droppedTurns: 0, links: [] });
+  const [activity, setActivity] = useState({
+    turns: [],
+    totalCostUsd: 0,
+    unpriced: false,
+    droppedTurns: 0,
+    links: [],
+    title: null,
+  });
   const [chrome, setChrome] = useState({ pinned: false, locked: false });
   const [trayOpen, setTrayOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
@@ -30,7 +37,9 @@ export default function App() {
     const { hekaton } = window;
     hekaton.session.get().then((initial) => {
       setSession(initial);
-      setActivity(initial.activity ?? { turns: [], totalCostUsd: 0, unpriced: false, droppedTurns: 0, links: [] });
+      setActivity(
+        initial.activity ?? { turns: [], totalCostUsd: 0, unpriced: false, droppedTurns: 0, links: [], title: null },
+      );
       setTrayOpen(initial.trayOpen === true);
     });
     const unsubscribe = [

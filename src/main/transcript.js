@@ -73,6 +73,10 @@ export function createTurnBuilder() {
   const seenMessages = new Set();
   const openTools = new Map();
   const links = new Map();
+  // Claude's own name for the conversation: a user /rename wins over the
+  // model-generated title, and either is a fallback when the statusline has
+  // not reported a session name.
+  let title = null;
   // Turns aged out of the window still count towards the session estimate.
   const dropped = { costUsd: 0, unpriced: false, count: 0 };
 
@@ -150,6 +154,8 @@ export function createTurnBuilder() {
 
   function push(record) {
     if (!record || typeof record !== "object" || record.isSidechain || record.isMeta) return;
+    if (record.type === "custom-title" && typeof record.customTitle === "string") title = record.customTitle;
+    else if (record.type === "ai-title" && typeof record.aiTitle === "string") title = record.aiTitle;
     const message = record.message;
     if (!message || typeof message !== "object") return;
     const at = Date.parse(record.timestamp) || Date.now();
@@ -167,7 +173,7 @@ export function createTurnBuilder() {
       totalCostUsd += turn.costUsd;
       unpriced = unpriced || turn.unpriced;
     }
-    return { totalCostUsd, unpriced, droppedTurns: dropped.count };
+    return { totalCostUsd, unpriced, droppedTurns: dropped.count, title };
   }
 
   return { push, turns: () => turns, summary, links: () => [...links.values()] };

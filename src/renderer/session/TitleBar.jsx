@@ -42,10 +42,9 @@ function Control({ icon, label, active, onClick }) {
 export default function TitleBar({ session, chrome, trayOpen, onToggleTray, onTogglePin, onToggleLock }) {
   const { profile, telemetry } = session;
   const { label, color, text } = statusAppearance(telemetry.state, session.settings?.statusAppearance);
+  const claudeName = telemetry.sessionName || session.activity?.title;
   const sessionName =
-    session.settings?.showSessionNames !== false && telemetry.sessionName && telemetry.sessionName !== profile.name
-      ? telemetry.sessionName
-      : null;
+    session.settings?.showSessionNames !== false && claudeName && claudeName !== profile.name ? claudeName : null;
   return (
     <header className="title-bar">
       <span className="title-bar__name">

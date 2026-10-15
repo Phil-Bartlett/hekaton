@@ -127,6 +127,15 @@ describe("createTurnBuilder", () => {
     expect(builder.summary().unpriced).toBe(true);
   });
 
+  it("takes the session title from ai-title, and a user rename overrides it", () => {
+    const builder = createTurnBuilder();
+    builder.push(user(0, "go"));
+    builder.push({ type: "ai-title", aiTitle: "Login bug fix" });
+    expect(builder.summary().title).toBe("Login bug fix");
+    builder.push({ type: "custom-title", customTitle: "Auth work" });
+    expect(builder.summary().title).toBe("Auth work");
+  });
+
   it("collects artifact and PR links from assistant text and tool results, deduped", () => {
     const builder = createTurnBuilder();
     builder.push(user(0, "build it"));
