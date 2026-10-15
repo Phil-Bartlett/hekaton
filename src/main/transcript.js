@@ -16,15 +16,23 @@ function toolSummary(input) {
   return Object.values(input).find((value) => typeof value === "string") ?? "";
 }
 
+// Slash-command output, task notifications and system reminders are logged
+// as user records too; they are not prompts the user typed.
+const SYSTEM_RECORD = /^\s*<(local-command|command-|task-notification|system-reminder|bash-(stdout|stderr|input))/;
+
+function userTyped(text) {
+  return typeof text === "string" && text.trim() !== "" && !SYSTEM_RECORD.test(text);
+}
+
 function promptText(content) {
-  if (typeof content === "string") return content;
+  if (typeof content === "string") return userTyped(content) ? content : null;
   if (!Array.isArray(content)) return null;
   if (content.some((block) => block.type === "tool_result")) return null;
   const text = content
     .filter((block) => block.type === "text" && typeof block.text === "string")
     .map((block) => block.text)
     .join("\n");
-  return text || null;
+  return userTyped(text) ? text : null;
 }
 
 function emptyUsage() {

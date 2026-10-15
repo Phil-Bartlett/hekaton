@@ -67,6 +67,8 @@ describe("createTurnBuilder", () => {
     );
     builder.push(user(1, "subagent prompt", { isSidechain: true }));
     builder.push(user(2, "caveat", { isMeta: true }));
+    builder.push(user(2.5, "<local-command-stdout>Set effort level to high</local-command-stdout>"));
+    builder.push(user(2.6, "<task-notification>\n<task-id>x</task-id>\n</task-notification>"));
     builder.push({ type: "file-history-snapshot", timestamp: at(3) });
     builder.push("not an object");
     expect(builder.turns().map((turn) => turn.prompt)).toEqual(["with an image"]);
