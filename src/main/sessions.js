@@ -138,10 +138,10 @@ export function createSessionManager(emit, telemetryServer) {
     return true;
   }
 
-  function applyStatusPayload(id, payload) {
+  function applyStatusPayload(id, payload, meta) {
     const session = sessions.get(id);
     if (!session) return false;
-    update(session, applyStatus(session.telemetry, payload));
+    update(session, applyStatus(session.telemetry, payload, meta));
     return true;
   }
 

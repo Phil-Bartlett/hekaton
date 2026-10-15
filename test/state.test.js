@@ -101,6 +101,14 @@ describe("applyExit", () => {
   });
 });
 
+describe("applyStatus remote control", () => {
+  it("tracks the Remote Control connection reported by the relay", () => {
+    const connected = applyStatus(initialTelemetry(0), { session_id: "s1" }, { remoteControlId: "rc-1" });
+    expect(connected.remoteControlId).toBe("rc-1");
+    expect(applyStatus(connected, { session_id: "s1" }).remoteControlId).toBeNull();
+  });
+});
+
 describe("attentionFor", () => {
   it("flags approval requests and finished turns only", () => {
     expect(attentionFor(STATES.running, STATES.awaitingApproval)).toBe("approval");

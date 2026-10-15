@@ -97,6 +97,7 @@ export default function ProfileEditor({ profile, displays, onClose }) {
     alwaysOnTop: false,
     confirmClose: false,
     skipPermissions: false,
+    remoteControl: false,
     addDirs: [],
     ...profile,
   });
@@ -246,6 +247,10 @@ export default function ProfileEditor({ profile, displays, onClose }) {
             <label>
               <input type="checkbox" checked={form.confirmClose} onChange={setFlag("confirmClose")} /> Confirm before
               closing
+            </label>
+            <label>
+              <input type="checkbox" checked={form.remoteControl} onChange={setFlag("remoteControl")} /> Remote Control:
+              drive this session from the Claude app on a phone (claude --remote-control)
             </label>
           </div>
         </div>

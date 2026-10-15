@@ -89,6 +89,11 @@ export default function SessionCard({ session, now, fx, appearance, profiles, sh
     <article className={`card${dragClass}`} style={{ "--accent": profile.accent ?? DEFAULT_ACCENT }} {...handlers}>
       <header className="card__head">
         <CardName profileName={profile.name} sessionName={telemetry.sessionName} showNames={showNames} />
+        {telemetry.remoteControlId && (
+          <span className="card__badge" title="Connected to Remote Control: the Claude app can drive this session">
+            Remote
+          </span>
+        )}
         <Money usd={telemetry.totalCostUsd} fx={fx} className="card__cost" />
         <MenuButton open={menuOpen} onToggle={() => setMenuOpen((open) => !open)} />
       </header>

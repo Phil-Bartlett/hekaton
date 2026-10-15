@@ -536,10 +536,10 @@ ipcMain.handle(CH.appSetDataFolder, (event, folder) => {
 app.on("second-instance", () => windows.createBridgeWindow(instances?.bridgeBounds()));
 
 app.whenReady().then(async () => {
-  const telemetryServer = await startTelemetryServer((kind, id, payload) => {
+  const telemetryServer = await startTelemetryServer((kind, id, payload, meta) => {
     if (kind === "hook") return sessions.applyHook(id, payload);
     usage.update(payload);
-    return sessions.applyStatus(id, payload);
+    return sessions.applyStatus(id, payload, meta);
   });
   console.log(`telemetry receiver on 127.0.0.1:${telemetryServer.port}`);
   dataDir = createDataDir();

@@ -40,6 +40,7 @@ export function claudeArgs({
   permissionMode,
   skipPermissions,
   addDirs = [],
+  remoteControl = false,
   settingsPath,
   sessionId,
   resume,
@@ -51,6 +52,7 @@ export function claudeArgs({
   if (permissionMode) args.push("--permission-mode", permissionMode);
   if (skipPermissions) args.push("--dangerously-skip-permissions");
   if (addDirs.length) args.push("--add-dir", ...addDirs);
+  if (remoteControl) args.push("--remote-control");
   if (settingsPath) args.push("--settings", settingsPath);
   if (resume) {
     args.push("--resume", resume);

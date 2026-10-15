@@ -23,8 +23,9 @@ function readBody(req) {
 
 // Loopback-only receiver for the hook and statusline relays. The instance id
 // in the path is a random UUID the app minted, so a request for an unknown
-// one is simply dropped. `deliver(kind, instanceId, payload)` returns false
-// when the instance is unknown.
+// one is simply dropped. `deliver(kind, instanceId, payload, meta)` returns
+// false when the instance is unknown; meta carries what the relay learnt from
+// its environment.
 export function startTelemetryServer(deliver) {
   const server = http.createServer(async (req, res) => {
     const match = req.method === "POST" ? ROUTE.exec(req.url ?? "") : null;
@@ -39,7 +40,8 @@ export function startTelemetryServer(deliver) {
       res.writeHead(400).end();
       return;
     }
-    res.writeHead(deliver(match[1], match[2], payload) ? 204 : 404).end();
+    const remoteControlId = typeof req.headers["x-hekaton-rc"] === "string" ? req.headers["x-hekaton-rc"] : "";
+    res.writeHead(deliver(match[1], match[2], payload, { remoteControlId: remoteControlId || null }) ? 204 : 404).end();
   });
 
   return new Promise((resolve, reject) => {

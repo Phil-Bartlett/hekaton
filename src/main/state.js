@@ -29,6 +29,7 @@ export function initialTelemetry(at = Date.now()) {
     totalCostUsd: 0,
     contextPct: null,
     rateLimits: null,
+    remoteControlId: null,
   };
 }
 
@@ -82,7 +83,7 @@ export function applyHook(telemetry, payload, at = Date.now()) {
 
 // cost.total_cost_usd resets whenever /clear starts a new session id, so the
 // running total banks the previous id's figure before switching.
-export function applyStatus(telemetry, payload) {
+export function applyStatus(telemetry, payload, meta = {}) {
   const sessionId = payload.session_id ?? telemetry.claudeSessionId;
   const switched = telemetry.claudeSessionId && sessionId !== telemetry.claudeSessionId;
   const bankedCostUsd = switched ? telemetry.bankedCostUsd + telemetry.costUsd : telemetry.bankedCostUsd;
@@ -98,6 +99,8 @@ export function applyStatus(telemetry, payload) {
     totalCostUsd: bankedCostUsd + costUsd,
     contextPct: payload.context_window?.used_percentage ?? telemetry.contextPct,
     rateLimits: payload.rate_limits ?? telemetry.rateLimits,
+    // Every status post says whether Remote Control is connected right now.
+    remoteControlId: meta.remoteControlId ?? null,
   };
 }
 

@@ -20,6 +20,10 @@ describe("claudeArgs", () => {
     ]);
   });
 
+  it("asks for Remote Control when the profile wants it", () => {
+    expect(claudeArgs({ sessionId: "abc", remoteControl: true })).toEqual(["--remote-control", "--session-id", "abc"]);
+  });
+
   it("prefers --resume over --session-id and keeps --settings on resume", () => {
     expect(claudeArgs({ sessionId: "new", resume: "old", settingsPath: "C:/x.json" })).toEqual([
       "--settings",
