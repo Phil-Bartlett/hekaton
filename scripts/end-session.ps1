@@ -1,9 +1,17 @@
-# Ask a Claude Code session running in another terminal to quit by typing
-# /exit into its console, the same thing its user would do. A hard kill leaves
-# that terminal in raw mode and the conversation without its SessionEnd hook.
+# Type a line into the console of another process, the way its user would.
+# Used to send /exit to a Claude Code session running outside Hekaton (a
+# hard kill leaves that terminal in raw mode and skips Claude's shutdown),
+# then `exit` to the shell that launched it, so its tab or window closes.
+# Prints the target's parent as JSON, since that is gone once the target exits.
 #
-# usage: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File end-session.ps1 -TargetPid <pid>
-param([Parameter(Mandatory = $true)][int]$TargetPid)
+# usage: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File end-session.ps1 -TargetPid <pid> [-Line "/exit"]
+param(
+    [Parameter(Mandatory = $true)][int]$TargetPid,
+    [string]$Line = "/exit"
+)
+
+$process = Get-CimInstance Win32_Process -Filter "ProcessId=$TargetPid"
+$parent = if ($process) { Get-CimInstance Win32_Process -Filter "ProcessId=$($process.ParentProcessId)" } else { $null }
 
 Add-Type -Namespace Hekaton -Name Console -MemberDefinition @'
 [DllImport("kernel32.dll", SetLastError = true)] public static extern bool FreeConsole();
@@ -46,7 +54,7 @@ function Key([char]$c, [uint16]$vk, [bool]$down) {
 }
 
 $events = New-Object System.Collections.Generic.List[Hekaton.Console+KeyEvent]
-foreach ($c in "/exit".ToCharArray()) {
+foreach ($c in $Line.ToCharArray()) {
     $vk = [uint16]([int][char]::ToUpperInvariant($c))
     $events.Add((Key $c $vk $true))
     $events.Add((Key $c $vk $false))
@@ -57,4 +65,5 @@ $written = [uint32]0
 if (-not [Hekaton.Console]::WriteConsoleInputW($conin, $events.ToArray(), [uint32]$events.Count, [ref]$written)) {
     throw "WriteConsoleInput failed: $([Runtime.InteropServices.Marshal]::GetLastWin32Error())"
 }
-"typed /exit into console of pid $TargetPid ($written events)"
+
+@{ parentPid = $(if ($parent) { [int]$parent.ProcessId } else { $null }); parentName = $(if ($parent) { $parent.Name } else { $null }) } | ConvertTo-Json -Compress

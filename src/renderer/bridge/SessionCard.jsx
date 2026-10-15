@@ -186,7 +186,7 @@ export function DormantCard({ entry, now, fx, appearance, profiles, showNames, d
             type="button"
             className="button--primary"
             disabled={ending}
-            title="This conversation is still running outside Hekaton. Asks that copy to quit (it types /exit for you); then the card can be resumed here"
+            title="This conversation is still running outside Hekaton. Asks that copy to quit (types /exit for you) and closes the shell it ran in; then the card can be resumed here"
             onClick={async () => {
               setEnding(true);
               if (!(await bridge.endOrphan(entry.id))) setEnding(false);
