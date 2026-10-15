@@ -50,6 +50,8 @@ contextBridge.exposeInMainWorld("hekaton", {
     moveTo: (id, x, y) => ipcRenderer.send(CH.sessionMoveTo, id, x, y),
     resumeInstance: (id) => ipcRenderer.invoke(CH.instanceResume, id),
     dismissInstance: (id) => ipcRenderer.invoke(CH.instanceDismiss, id),
+    moveInstance: (id, profileId) => ipcRenderer.invoke(CH.instanceMove, id, profileId),
+    reorder: (ids) => ipcRenderer.invoke(CH.instanceOrder, ids),
     history: () => ipcRenderer.invoke(CH.historyList),
     resume: (entry) => ipcRenderer.invoke(CH.historyResume, entry),
     reference: () => ipcRenderer.invoke(CH.referenceList),

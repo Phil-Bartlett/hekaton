@@ -1084,3 +1084,116 @@
   border-color: #22c55e;
   color: #4ade80;
 }
+
+/* ---- Card menu, subtitle, drag and density -------------------------------- */
+
+.card__subtitle {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card__head {
+  gap: 8px;
+}
+
+.card__name {
+  min-width: 0;
+}
+
+.card__menu-button {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--fg-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.card__menu-button:hover {
+  color: var(--fg);
+}
+
+.card__menu {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.card__menu select {
+  flex: 1;
+  font: inherit;
+  color: var(--fg);
+  background: var(--control);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+
+.card[draggable="true"] {
+  cursor: grab;
+}
+
+.card.is-dragging {
+  opacity: 0.4;
+}
+
+.card.is-drop-target {
+  outline: 2px dashed #22c55e;
+  outline-offset: 2px;
+}
+
+.layout-controls {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.layout-controls select {
+  font: inherit;
+  font-size: 12px;
+  color: var(--fg);
+  background: var(--control);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+.cards--compact {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.cards--compact .card {
+  padding: 8px 10px;
+  gap: 6px;
+}
+
+.cards--compact .card__prompt,
+.cards--compact .card__context {
+  display: none;
+}
+
+.filter-row {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding-right: 16px;
+}
+
+.filter-row .filter {
+  flex: 1;
+}

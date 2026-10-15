@@ -19,6 +19,7 @@ export function summarise(session, { bounds = null, pinned = false, trayOpen = f
     colorScope: profile.colorScope ?? "border+title",
     cwd: profile.cwd,
     claudeSessionId: telemetry.claudeSessionId ?? session.sessionId ?? null,
+    transcriptPath: telemetry.transcriptPath ?? null,
     title: telemetry.sessionName ?? null,
     model: telemetry.model?.name ?? null,
     firstPrompt: telemetry.firstPrompt,
@@ -34,12 +35,13 @@ export function summarise(session, { bounds = null, pinned = false, trayOpen = f
 }
 
 function readState(file) {
+  const empty = { bridge: null, instances: [], order: [] };
   try {
     const parsed = JSON.parse(readFileSync(file, "utf8"));
-    if (parsed?.version !== STATE_VERSION || !Array.isArray(parsed.instances)) return { bridge: null, instances: [] };
-    return { bridge: parsed.bridge ?? null, instances: parsed.instances };
+    if (parsed?.version !== STATE_VERSION || !Array.isArray(parsed.instances)) return empty;
+    return { bridge: parsed.bridge ?? null, instances: parsed.instances, order: parsed.order ?? [] };
   } catch {
-    return { bridge: null, instances: [] };
+    return empty;
   }
 }
 
@@ -49,13 +51,16 @@ export function createInstances({ file }) {
   // Nothing is running when the store is created, so every saved entry is dormant.
   const entries = new Map(loaded.instances.filter((e) => e?.id).map((e) => [e.id, { ...e, live: false }]));
   let bridge = loaded.bridge;
+  // Manual card order on the Bridge; ids not listed sort after the listed ones.
+  let order = loaded.order.filter((id) => entries.has(id));
   let timer = null;
 
   function saveNow() {
     clearTimeout(timer);
     timer = null;
     const tmp = `${file}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ version: STATE_VERSION, bridge, instances: [...entries.values()] }, null, 2));
+    const state = { version: STATE_VERSION, bridge, order, instances: [...entries.values()] };
+    writeFileSync(tmp, JSON.stringify(state, null, 2));
     renameSync(tmp, file);
   }
 
@@ -79,8 +84,35 @@ export function createInstances({ file }) {
   function dismiss(id) {
     if (entries.get(id)?.live) return false;
     const removed = entries.delete(id);
-    if (removed) save();
+    if (removed) {
+      order = order.filter((other) => other !== id);
+      save();
+    }
     return removed;
+  }
+
+  // Re-home a card under another profile. The conversation keeps its
+  // transcript; a later resume uses the transcript path, so the new folder
+  // does not have to be where it was recorded.
+  function move(id, profile) {
+    const entry = entries.get(id);
+    if (!entry || !profile) return null;
+    const moved = {
+      ...entry,
+      profileId: profile.id ?? null,
+      profileName: profile.name,
+      accent: profile.accent ?? null,
+      colorScope: profile.colorScope ?? entry.colorScope,
+      cwd: profile.cwd,
+    };
+    entries.set(id, moved);
+    save();
+    return moved;
+  }
+
+  function setOrder(ids) {
+    order = ids.filter((id, index) => entries.has(id) && ids.indexOf(id) === index);
+    save();
   }
 
   function setBridgeBounds(next) {
@@ -92,6 +124,9 @@ export function createInstances({ file }) {
     record,
     markDormant,
     dismiss,
+    move,
+    setOrder,
+    order: () => [...order],
     get: (id) => entries.get(id) ?? null,
     list: () => [...entries.values()],
     dormant: () => [...entries.values()].filter((entry) => !entry.live),

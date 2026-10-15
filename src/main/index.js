@@ -1,4 +1,5 @@
 import { app, dialog, globalShortcut, ipcMain, shell } from "electron";
+import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { CH } from "../shared/channels.js";
@@ -79,6 +80,7 @@ function snapshot() {
     profiles: store.profiles(),
     sessions: sessions.list().map((session) => ({ ...session, bounds: windows.sessionBounds(session.id) })),
     dormant: instances.dormant(),
+    order: instances.order(),
     external: externalSessions(),
   };
 }
@@ -125,6 +127,11 @@ function onSessionEvent(event, id, payload) {
   if (event === "update") {
     logUpdate(payload);
     windows.sendToSession(id, CH.sessionUpdate, { ...payload, fx: fx.current(), settings: store.settings() });
+    const name = payload.telemetry.sessionName;
+    windows.setSessionTitle(
+      id,
+      name && name !== payload.profile.name ? `${payload.profile.name} · ${name}` : payload.profile.name,
+    );
     recordInstance(id);
     broadcast();
   }
@@ -180,10 +187,34 @@ function resumeInstance(id) {
     accent: entry.accent ?? undefined,
     colorScope: entry.colorScope ?? "border+title",
   };
+  // The transcript path survives a move to another profile's folder; the bare
+  // id only resolves from the folder the conversation was recorded in.
+  const resume =
+    entry.transcriptPath && existsSync(entry.transcriptPath) ? entry.transcriptPath : entry.claudeSessionId;
   return launchProfile(
-    { ...profile, cwd: entry.cwd || profile.cwd, resume: entry.claudeSessionId },
+    { ...profile, cwd: entry.cwd || profile.cwd, resume },
     { id, bounds: entry.bounds, pinned: entry.pinned, trayOpen: entry.trayOpen },
   );
+}
+
+// Moving a card re-labels it under another profile; a running session keeps
+// its folder until it is next resumed, when the transcript path carries it over.
+function moveInstance(id, profileId) {
+  const profile = store.findProfile(profileId);
+  if (!profile) return null;
+  const live = sessions.get(id);
+  if (live) {
+    sessions.setProfile(id, {
+      id: profile.id,
+      name: profile.name,
+      accent: profile.accent,
+      colorScope: profile.colorScope,
+      cwd: profile.cwd,
+    });
+    recordInstance(id);
+    return instances.get(id);
+  }
+  return instances.move(id, profile);
 }
 
 // Everything still running is written out dormant before the ptys die, so a
@@ -295,6 +326,18 @@ ipcMain.handle(CH.instanceDismiss, (event, id) => {
   const removed = instances.dismiss(id);
   if (removed) broadcast();
   return removed;
+});
+ipcMain.handle(CH.instanceMove, (event, id, profileId) => {
+  if (!fromBridge(event)) return null;
+  const moved = moveInstance(id, profileId);
+  if (moved) broadcast();
+  return moved;
+});
+ipcMain.handle(CH.instanceOrder, (event, ids) => {
+  if (!fromBridge(event) || !Array.isArray(ids)) return null;
+  instances.setOrder(ids.filter((id) => typeof id === "string"));
+  broadcast();
+  return instances.order();
 });
 ipcMain.handle(CH.historyList, (event) => (fromBridge(event) ? history.list() : []));
 ipcMain.handle(CH.referenceList, (event) =>

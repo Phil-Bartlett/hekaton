@@ -26,6 +26,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   theme: "dark",
   customThemes: {},
   claudeBinary: "",
+  showSessionNames: true,
+  layout: { sort: "manual", density: "comfortable" },
 });
 
 // Launch profiles and app settings, each one JSON file in the user-data folder.

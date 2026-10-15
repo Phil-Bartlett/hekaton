@@ -151,6 +151,15 @@ export function createSessionManager(emit, telemetryServer) {
     emit("update", id, publicView(session));
   }
 
+  // Re-label a running session under another profile. The Claude process
+  // keeps its working directory until the conversation is next resumed.
+  function setProfile(id, profile) {
+    const session = sessions.get(id);
+    if (!session) return;
+    session.profile = { ...session.profile, ...profile };
+    emit("update", id, publicView(session));
+  }
+
   // Returns everything drawn so far and switches the session to live streaming.
   function attach(id) {
     const session = sessions.get(id);
@@ -189,6 +198,7 @@ export function createSessionManager(emit, telemetryServer) {
     applyHook: applyHookPayload,
     applyStatus: applyStatusPayload,
     setTray,
+    setProfile,
     attach,
     write,
     resize,

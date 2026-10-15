@@ -28,6 +28,8 @@ export const CH = Object.freeze({
   sessionMoveTo: "session:move-to",
   instanceResume: "instance:resume",
   instanceDismiss: "instance:dismiss",
+  instanceMove: "instance:move",
+  instanceOrder: "instance:order",
   historyList: "history:list",
   historyResume: "history:resume",
   referenceList: "reference:list",

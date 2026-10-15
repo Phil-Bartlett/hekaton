@@ -214,3 +214,8 @@
   border-radius: 4px;
   cursor: pointer;
 }
+
+.title-bar__session {
+  font-weight: 400;
+  color: var(--fg-muted);
+}

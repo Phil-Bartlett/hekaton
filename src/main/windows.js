@@ -192,6 +192,13 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     return win ? chromeFor(win) : null;
   }
 
+  // OS-level title: the profile, plus Claude's own name for the conversation
+  // once it has one, so Alt+Tab and the taskbar tell sessions apart.
+  function setSessionTitle(id, title) {
+    const win = sessionWindow(id);
+    if (win && win.getTitle() !== title) win.setTitle(title);
+  }
+
   function moveSession(id, x, y) {
     const win = sessionWindow(id);
     if (!win || !Number.isFinite(x) || !Number.isFinite(y)) return;
@@ -301,6 +308,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     sessionWindow,
     sessionBounds,
     sessionChrome,
+    setSessionTitle,
     moveSession,
     sendToSession,
     sendToBridge,

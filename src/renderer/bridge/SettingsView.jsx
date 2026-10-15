@@ -55,6 +55,16 @@ function GeneralTab({ draft, patch, hotkeyError }) {
           That hotkey could not be registered; it may be taken by another app.
         </span>
       )}
+      <span className="field--flags">
+        <label>
+          <input
+            type="checkbox"
+            checked={draft.showSessionNames !== false}
+            onChange={(event) => patch({ showSessionNames: event.target.checked })}
+          />{" "}
+          Show Claude&apos;s own session name on cards and title bars
+        </label>
+      </span>
     </label>
   );
 }

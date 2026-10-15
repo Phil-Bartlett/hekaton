@@ -67,17 +67,104 @@ function ProfileFilter({ state, filter, onChange }) {
   );
 }
 
+const SORTS = [
+  ["manual", "Manual order"],
+  ["profile", "By profile"],
+  ["recent", "Most recent"],
+];
+const DENSITIES = [
+  ["comfortable", "Comfortable"],
+  ["compact", "Compact"],
+];
+
+// Live and saved cards in one list so they can be ordered together. Manual
+// order comes from state.json; cards it does not mention follow, newest first.
+function orderCards(cards, order, sort) {
+  const recency = (card) => card.lastSeenAt ?? card.startedAt ?? 0;
+  if (sort === "profile") {
+    return [...cards].sort((a, b) => a.profileName.localeCompare(b.profileName) || recency(b) - recency(a));
+  }
+  if (sort === "recent") return [...cards].sort((a, b) => recency(b) - recency(a));
+  const rank = new Map(order.map((id, index) => [id, index]));
+  return [...cards].sort((a, b) => {
+    const ra = rank.get(a.id) ?? Infinity;
+    const rb = rank.get(b.id) ?? Infinity;
+    return ra - rb || recency(b) - recency(a);
+  });
+}
+
+function LayoutControls({ layout, onChange }) {
+  const select = (key, options, label) => (
+    <select
+      aria-label={label}
+      value={layout[key]}
+      onChange={(event) => onChange({ ...layout, [key]: event.target.value })}
+    >
+      {options.map(([value, text]) => (
+        <option key={value} value={value}>
+          {text}
+        </option>
+      ))}
+    </select>
+  );
+  return (
+    <span className="layout-controls">
+      {select("sort", SORTS, "Sort cards")}
+      {select("density", DENSITIES, "Card density")}
+    </span>
+  );
+}
+
 function Dashboard({ state, onEditProfile, onNewProfile }) {
   const now = useNow();
   const [filter, setFilter] = useState("all");
+  const [dragging, setDragging] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
   const { bridge } = window.hekaton;
+  const layout = { sort: "manual", density: "comfortable", ...state.settings.layout };
+  const showNames = state.settings.showSessionNames !== false;
   const showOwn = filter !== EXTERNAL_FILTER;
   const showExternal = filter === "all" || filter === EXTERNAL_FILTER;
   const byProfile = (name) => filter === "all" || filter === name;
-  const live = showOwn ? state.sessions.filter((s) => byProfile(s.profile.name)) : [];
-  const dormant = showOwn ? state.dormant.filter((d) => byProfile(d.profileName)) : [];
+  const live = showOwn
+    ? state.sessions
+        .filter((s) => byProfile(s.profile.name))
+        .map((s) => ({ kind: "live", id: s.id, profileName: s.profile.name, startedAt: s.startedAt, session: s }))
+    : [];
+  const dormant = showOwn
+    ? state.dormant.filter((d) => byProfile(d.profileName)).map((d) => ({ kind: "dormant", ...d, entry: d }))
+    : [];
+  const cards = orderCards([...live, ...dormant], state.order, layout.sort);
   const external = showExternal ? state.external : [];
-  const empty = live.length === 0 && dormant.length === 0 && external.length === 0;
+  const empty = cards.length === 0 && external.length === 0;
+
+  // Drag a card onto another to take its place; only meaningful in manual order.
+  function dragProps(id) {
+    if (layout.sort !== "manual") return {};
+    return {
+      draggable: true,
+      onDragStart: () => setDragging(id),
+      onDragEnd: () => {
+        setDragging(null);
+        setDropTarget(null);
+      },
+      onDragOver: (event) => {
+        event.preventDefault();
+        if (dropTarget !== id) setDropTarget(id);
+      },
+      onDrop: (event) => {
+        event.preventDefault();
+        if (!dragging || dragging === id) return;
+        const ids = cards.map((card) => card.id).filter((other) => other !== dragging);
+        ids.splice(ids.indexOf(id), 0, dragging);
+        bridge.reorder(ids);
+        setDragging(null);
+        setDropTarget(null);
+      },
+    };
+  }
+  const dragClass = (id) => `${dragging === id ? " is-dragging" : ""}${dropTarget === id ? " is-drop-target" : ""}`;
+
   return (
     <>
       <ProfilesRail
@@ -86,26 +173,37 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
         onEdit={onEditProfile}
         onNew={onNewProfile}
       />
-      <ProfileFilter state={state} filter={filter} onChange={setFilter} />
-      <section className="cards">
-        {live.map((session) => (
-          <SessionCard
-            key={session.id}
-            session={session}
-            now={now}
-            fx={state.fx}
-            appearance={state.settings.statusAppearance}
-          />
-        ))}
-        {dormant.map((entry) => (
-          <DormantCard
-            key={entry.id}
-            entry={entry}
-            now={now}
-            fx={state.fx}
-            appearance={state.settings.statusAppearance}
-          />
-        ))}
+      <div className="filter-row">
+        <ProfileFilter state={state} filter={filter} onChange={setFilter} />
+        <LayoutControls layout={layout} onChange={(next) => bridge.saveSettings({ layout: next })} />
+      </div>
+      <section className={`cards${layout.density === "compact" ? " cards--compact" : ""}`}>
+        {cards.map((card) => {
+          const drag = { ...dragProps(card.id), className: dragClass(card.id) };
+          return card.kind === "live" ? (
+            <SessionCard
+              key={card.id}
+              session={card.session}
+              now={now}
+              fx={state.fx}
+              appearance={state.settings.statusAppearance}
+              profiles={state.profiles}
+              showNames={showNames}
+              drag={drag}
+            />
+          ) : (
+            <DormantCard
+              key={card.id}
+              entry={card.entry}
+              now={now}
+              fx={state.fx}
+              appearance={state.settings.statusAppearance}
+              profiles={state.profiles}
+              showNames={showNames}
+              drag={drag}
+            />
+          );
+        })}
         {external.map((session) => (
           <ExternalSessionCard
             key={session.sessionId}
