@@ -1,0 +1,28 @@
+// IPC channel names shared by main, preload and renderers. Bundled into each
+// tier by esbuild, so the sandboxed preload never needs a runtime import.
+export const CH = Object.freeze({
+  // Session windows
+  sessionGet: "session:get",
+  sessionUpdate: "session:update",
+  sessionActivity: "session:activity",
+  windowPin: "window:pin",
+  windowCloseLock: "window:close-lock",
+  windowControl: "window:control",
+  windowChrome: "window:chrome",
+  ptyAttach: "pty:attach",
+  ptyWrite: "pty:write",
+  ptyResize: "pty:resize",
+  ptyData: "pty:data",
+  ptyExit: "pty:exit",
+  // Bridge window
+  bridgeGetState: "bridge:get-state",
+  bridgeState: "bridge:state",
+  profileSave: "profile:save",
+  profileDelete: "profile:delete",
+  sessionLaunch: "session:launch",
+  sessionFocus: "session:focus",
+  sessionCenter: "session:center",
+  sessionBringHere: "session:bring-here",
+  sessionTerminate: "session:terminate",
+  dialogPickFolder: "dialog:pick-folder",
+});

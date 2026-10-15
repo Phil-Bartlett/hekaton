@@ -1,0 +1,180 @@
+/* ---- Accent scope: the profile decides whether its colour frames the
+   window, tints the title bar, or both. ------------------------------------ */
+
+:root[data-window="session"][data-color-scope="title"] #root {
+  border-color: transparent;
+}
+
+:root[data-color-scope="title"] .title-bar,
+:root[data-color-scope="border+title"] .title-bar {
+  background: color-mix(in srgb, var(--accent) 20%, var(--bg));
+}
+
+/* ---- Title bar controls ------------------------------------------------- */
+
+.title-bar__controls {
+  display: flex;
+  gap: 2px;
+  margin: 0 8px 0 12px;
+  -webkit-app-region: no-drag;
+}
+
+.title-bar__control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.title-bar__control:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--fg);
+}
+
+.title-bar__control.is-active {
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* ---- Body: terminal + optional tray ------------------------------------- */
+
+.session-body {
+  display: flex;
+}
+
+.terminal-pane {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.activity-tray {
+  flex: none;
+  width: 360px;
+  border-left: 1px solid #2e2e2e;
+  background: #141414;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.activity-tray__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.activity-tray__empty {
+  color: var(--fg-muted);
+  text-align: center;
+  margin: 24px 0;
+}
+
+.turn__time {
+  color: var(--fg-muted);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.turn__card {
+  background: var(--bg-elevated);
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.turn__prompt {
+  margin: 0;
+  padding: 8px 10px;
+  background: #1f1f1f;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow: hidden;
+}
+
+.turn__tools {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #1f1f1f;
+  font-size: 12px;
+  font-family: "Cascadia Mono", Consolas, Menlo, monospace;
+}
+
+.tool-row.is-error {
+  box-shadow: inset 2px 0 0 #ef4444;
+}
+
+.tool-row__glyph,
+.tool-row__arrow {
+  color: var(--fg-muted);
+}
+
+.tool-row__summary {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tool-row__duration {
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.turn__tokens {
+  color: var(--fg-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.turn__chips {
+  display: flex;
+  justify-content: space-between;
+}
+
+.chip {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip--time {
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+
+.chip--cost {
+  background: #14532d;
+  color: #86efac;
+}

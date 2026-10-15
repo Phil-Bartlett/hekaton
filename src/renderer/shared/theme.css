@@ -1,0 +1,152 @@
+:root {
+  --bg: #1a1a1a;
+  --bg-elevated: #242424;
+  --fg: #d4d4d4;
+  --fg-muted: #8a8a8a;
+  --accent: #3b82f6;
+  --title-bar-height: 36px;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* Session windows wear their profile colour as a frame; the Bridge does not.
+   Windows draws its own 1px frame line over the top row, so keep this thick
+   enough to survive it. */
+:root[data-window="session"] #root {
+  border: 3px solid var(--accent);
+}
+
+:root[data-window="session"][data-platform="win32"] #root {
+  border-top-width: 4px;
+}
+
+.title-bar {
+  flex: none;
+  height: var(--title-bar-height);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 0 0 12px;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+/* macOS keeps its traffic lights on the left. */
+:root[data-platform="darwin"] .title-bar {
+  padding: 0 12px 0 80px;
+}
+
+/* ---- Caption buttons (Windows / Linux) ---------------------------------- */
+
+.caption {
+  display: flex;
+  align-self: stretch;
+  margin-left: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.caption__button {
+  width: 46px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+
+.caption__button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.caption__button--close:hover {
+  background: #c42b1c;
+  color: #fff;
+}
+
+.title-bar__name {
+  font-weight: 600;
+}
+
+.title-bar__meta {
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title-bar__facts {
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.state-pill__tool {
+  font-weight: 400;
+  letter-spacing: 0;
+  opacity: 0.9;
+}
+
+.session-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.title-bar__facts {
+  margin-left: auto;
+}
+
+.terminal-host {
+  position: absolute;
+  inset: 0;
+  padding: 4px;
+}
+
+.exit-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 6px 12px;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--accent);
+}
