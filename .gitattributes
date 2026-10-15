@@ -1,0 +1,7 @@
+# LF everywhere: the bash relay script breaks under CRLF, and the macOS build
+# shares the tree.
+* text=auto eol=lf
+*.sh text eol=lf
+*.png binary
+*.ico binary
+*.icns binary
