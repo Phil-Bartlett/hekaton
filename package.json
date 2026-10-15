@@ -2,7 +2,7 @@
   "name": "hekaton",
   "version": "0.2.0",
   "private": true,
-  "description": "Hekaton — a window manager and live dashboard for many Claude Code sessions",
+  "description": "Hekaton \u2014 a window manager and live dashboard for many Claude Code sessions",
   "homepage": "https://github.com/Phil-Bartlett/hekaton",
   "author": {
     "name": "Phil Bartlett",
@@ -19,10 +19,10 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "rebuild": "electron-rebuild -f -w node-pty",
-    "dist": "node scripts/build.mjs && electron-builder --win nsis",
-    "dist:mac": "node scripts/build.mjs && electron-builder --mac dmg",
+    "dist": "node scripts/build.mjs && electron-builder --publish never --win nsis",
+    "dist:mac": "node scripts/build.mjs && electron-builder --publish never --mac dmg",
     "icon": "electron scripts/icon.cjs",
-    "dist:linux": "node scripts/build.mjs && electron-rebuild -f -w node-pty && electron-builder --linux"
+    "dist:linux": "node scripts/build.mjs && electron-rebuild -f -w node-pty && electron-builder --publish never --linux"
   },
   "dependencies": {
     "@xterm/addon-fit": "0.11.0",
@@ -47,7 +47,7 @@
   "build": {
     "appId": "io.github.philbartlett.hekaton",
     "productName": "Hekaton",
-    "copyright": "Copyright © 2026 Phil Bartlett",
+    "copyright": "Copyright \u00a9 2026 Phil Bartlett",
     "directories": {
       "output": "out",
       "buildResources": "build"
