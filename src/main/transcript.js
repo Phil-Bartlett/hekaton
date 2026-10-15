@@ -7,8 +7,19 @@ import { costOf } from "./pricing.js";
 // from here.
 
 const MAX_TURNS = 50;
+const MAX_LINKS = 30;
 const POLL_MS = 1000;
 const TOOL_ARG_KEYS = ["command", "file_path", "pattern", "path", "query", "url", "prompt", "description"];
+
+// Links worth surfacing per session: a published claude.ai artifact and a
+// pull or merge request. Each pattern maps a URL to a kind; scanning is
+// capped per record so a large tool result cannot stall the tail.
+const SCAN_LIMIT = 20_000;
+const LINK_PATTERNS = [
+  ["artifact", /https?:\/\/(?:[\w.-]+\.)?claude\.ai\/(?:code\/)?artifact\/[\w-]+/g],
+  ["pr", /https?:\/\/(?:[\w.-]+\.)?github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/g],
+  ["pr", /https?:\/\/(?:[\w.-]+\.)?gitlab\.[\w.-]+\/[\w./-]+\/-\/merge_requests\/\d+/g],
+];
 
 function toolSummary(input) {
   if (!input || typeof input !== "object") return "";
@@ -39,12 +50,29 @@ function emptyUsage() {
   return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 }
 
+// Pulls artifact and PR links out of one block of text into `links`, newest
+// kept when the cap is passed. Trailing punctuation from prose is trimmed.
+export function collectLinks(text, links) {
+  if (typeof text !== "string" || !text) return;
+  const scanned = text.length > SCAN_LIMIT ? text.slice(0, SCAN_LIMIT) : text;
+  for (const [kind, pattern] of LINK_PATTERNS) {
+    pattern.lastIndex = 0;
+    for (const match of scanned.matchAll(pattern)) {
+      const url = match[0].replace(/[.,);]+$/, "");
+      if (links.has(url)) continue;
+      links.set(url, { url, kind });
+      if (links.size > MAX_LINKS) links.delete(links.keys().next().value);
+    }
+  }
+}
+
 // Folds transcript records into per-prompt turns: the prompt, every tool
 // call with its duration, and the tokens and estimated cost behind it.
 export function createTurnBuilder() {
   const turns = [];
   const seenMessages = new Set();
   const openTools = new Map();
+  const links = new Map();
   // Turns aged out of the window still count towards the session estimate.
   const dropped = { costUsd: 0, unpriced: false, count: 0 };
 
@@ -108,11 +136,24 @@ export function createTurnBuilder() {
     else turn.costUsd += cost;
   }
 
+  function scanForLinks(content) {
+    if (typeof content === "string") return collectLinks(content, links);
+    if (!Array.isArray(content)) return;
+    for (const block of content) {
+      if (block.type === "text") collectLinks(block.text, links);
+      else if (block.type === "tool_result") {
+        const inner = block.content;
+        collectLinks(typeof inner === "string" ? inner : JSON.stringify(inner ?? ""), links);
+      }
+    }
+  }
+
   function push(record) {
     if (!record || typeof record !== "object" || record.isSidechain || record.isMeta) return;
     const message = record.message;
     if (!message || typeof message !== "object") return;
     const at = Date.parse(record.timestamp) || Date.now();
+    scanForLinks(message.content);
     if (record.type === "user") userRecord(at, message);
     else if (record.type === "assistant") assistantRecord(at, message);
   }
@@ -129,7 +170,7 @@ export function createTurnBuilder() {
     return { totalCostUsd, unpriced, droppedTurns: dropped.count };
   }
 
-  return { push, turns: () => turns, summary };
+  return { push, turns: () => turns, summary, links: () => [...links.values()] };
 }
 
 // Follows a transcript file as it grows. A one-second stat poll is used
@@ -181,7 +222,7 @@ export function tailTranscript(filePath, onActivity) {
     stream.on("end", () => {
       offset = size;
       reading = false;
-      onActivity({ turns: builder.turns(), ...builder.summary() });
+      onActivity({ turns: builder.turns(), ...builder.summary(), links: builder.links() });
       if (again) {
         again = false;
         readMore();

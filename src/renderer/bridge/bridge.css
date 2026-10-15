@@ -213,6 +213,37 @@
   -webkit-box-orient: vertical;
 }
 
+.card__links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.card__link {
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--control);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.card__link:hover {
+  border-color: var(--accent);
+}
+
+.card__link--artifact {
+  background: color-mix(in srgb, var(--accent) 22%, var(--control));
+}
+
+.card__links-more {
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
 .card__note {
   margin: 0;
   color: var(--fg-muted);

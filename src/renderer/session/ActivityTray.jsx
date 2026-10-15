@@ -4,6 +4,37 @@ import Money from "../shared/Money.jsx";
 
 const TOOL_GLYPHS = { Write: "✎", Edit: "✎", Read: "▪", Bash: "▸", PowerShell: "▸", Grep: "⌕", Glob: "⌕" };
 
+const LINK_LABELS = { artifact: "Artifact", pr: "Pull request" };
+
+function linkText(link) {
+  if (link.kind === "pr") {
+    const match = link.url.match(/\/(?:pull|merge_requests)\/(\d+)/);
+    return match ? `#${match[1]}` : "Pull request";
+  }
+  return (LINK_LABELS[link.kind] ?? "Link") + " " + link.url.split("/").pop().slice(0, 8);
+}
+
+// Published artifacts and PRs the session has produced, newest last. Each
+// opens in the default browser through the preload bridge.
+function LinksStrip({ links }) {
+  if (links.length === 0) return null;
+  return (
+    <div className="activity-links" aria-label="Artifacts and links">
+      {links.map((link) => (
+        <button
+          key={link.url}
+          type="button"
+          className={`activity-links__chip activity-links__chip--${link.kind}`}
+          title={link.url}
+          onClick={() => window.hekaton.link.open(link.url)}
+        >
+          {linkText(link)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ToolRow({ tool }) {
   return (
     <li className={`tool-row${tool.error ? " is-error" : ""}`} title={tool.summary}>
@@ -57,7 +88,7 @@ function Turn({ turn, fx }) {
 // the estimate so the two numbers are not mistaken for the same measurement.
 export default function ActivityTray({ activity, reportedCostUsd, fx }) {
   const listRef = useRef(null);
-  const { turns, totalCostUsd, unpriced, droppedTurns } = activity;
+  const { turns, totalCostUsd, unpriced, droppedTurns, links = [] } = activity;
 
   useEffect(() => {
     const list = listRef.current;
@@ -66,6 +97,7 @@ export default function ActivityTray({ activity, reportedCostUsd, fx }) {
 
   return (
     <aside className="activity-tray" aria-label="Session activity">
+      <LinksStrip links={links} />
       <div className="activity-tray__list" ref={listRef}>
         {turns.length === 0 && <p className="activity-tray__empty">No activity yet.</p>}
         {turns.map((turn) => (

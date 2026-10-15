@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createTurnBuilder } from "../src/main/transcript.js";
+import { collectLinks, createTurnBuilder } from "../src/main/transcript.js";
 
 const T0 = "2026-10-15T08:00:00.000Z";
 const at = (seconds) => new Date(Date.parse(T0) + seconds * 1000).toISOString();
@@ -125,5 +125,33 @@ describe("createTurnBuilder", () => {
     record.message.model = "claude-mystery-9";
     builder.push(record);
     expect(builder.summary().unpriced).toBe(true);
+  });
+
+  it("collects artifact and PR links from assistant text and tool results, deduped", () => {
+    const builder = createTurnBuilder();
+    builder.push(user(0, "build it"));
+    builder.push(
+      assistant(1, "msg_1", {
+        type: "text",
+        text: "Published at https://claude.ai/code/artifact/abc123 and opened https://github.com/me/app/pull/42.",
+      }),
+    );
+    builder.push(
+      user(2, [
+        { type: "tool_result", tool_use_id: "t1", content: "see https://claude.ai/code/artifact/abc123 again" },
+      ]),
+    );
+    expect(builder.links()).toEqual([
+      { url: "https://claude.ai/code/artifact/abc123", kind: "artifact" },
+      { url: "https://github.com/me/app/pull/42", kind: "pr" },
+    ]);
+  });
+});
+
+describe("collectLinks", () => {
+  it("trims trailing prose punctuation and ignores unrelated urls", () => {
+    const links = new Map();
+    collectLinks("done (https://claude.ai/artifact/xy-9), not http://localhost:5050/api/health", links);
+    expect([...links.values()]).toEqual([{ url: "https://claude.ai/artifact/xy-9", kind: "artifact" }]);
   });
 });

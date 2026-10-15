@@ -80,6 +80,31 @@ function splitDrag(drag) {
   return { dragClass: className, handlers };
 }
 
+// Artifacts and PRs the session has produced, newest last, opened in the
+// browser. Shown only when the session has made some.
+function CardLinks({ links }) {
+  if (!links || links.length === 0) return null;
+  const shown = links.slice(-3);
+  return (
+    <div className="card__links">
+      {links.length > shown.length && <span className="card__links-more">+{links.length - shown.length}</span>}
+      {shown.map((link) => (
+        <button
+          key={link.url}
+          type="button"
+          className={`card__link card__link--${link.kind}`}
+          title={link.url}
+          onClick={() => window.hekaton.link.open(link.url)}
+        >
+          {link.kind === "pr"
+            ? (link.url.match(/\/(?:pull|merge_requests)\/(\d+)/)?.[1] ?? "PR").replace(/^/, "#")
+            : "Artifact"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function SessionCard({ session, now, fx, appearance, profiles, showNames, drag }) {
   const { id, profile, telemetry } = session;
   const { bridge } = window.hekaton;
@@ -118,6 +143,7 @@ export default function SessionCard({ session, now, fx, appearance, profiles, sh
       <p className="card__prompt" title={telemetry.lastPrompt ?? ""}>
         {telemetry.lastPrompt ?? <em>No prompt yet</em>}
       </p>
+      <CardLinks links={session.activity?.links} />
       <div className="card__actions">
         <button type="button" onClick={() => bridge.focus(id)}>
           Focus

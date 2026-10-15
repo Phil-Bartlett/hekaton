@@ -64,6 +64,38 @@
   min-height: 0;
 }
 
+.activity-links {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.activity-links__chip {
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--control);
+  color: var(--fg);
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-links__chip:hover {
+  border-color: var(--ui-accent);
+}
+
+.activity-links__chip--artifact {
+  background: color-mix(in srgb, var(--ui-accent) 20%, var(--control));
+}
+
 .activity-tray__list {
   flex: 1;
   min-height: 0;

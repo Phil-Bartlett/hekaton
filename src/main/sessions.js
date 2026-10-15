@@ -92,7 +92,7 @@ export function createSessionManager(emit, telemetryServer) {
       exitCode: null,
       telemetry: initialTelemetry(),
       trayOpen: trayOpen ?? profile.openTray === true,
-      activity: { turns: [], totalCostUsd: 0, unpriced: false, droppedTurns: 0 },
+      activity: { turns: [], totalCostUsd: 0, unpriced: false, droppedTurns: 0, links: [] },
       transcriptPath: null,
       settingsPath,
       stopTail: null,
