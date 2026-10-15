@@ -1,0 +1,84 @@
+name: Release
+
+# A v* tag builds every package and attaches them to a GitHub Release, so a
+# colleague installs from the Releases page rather than a CI artifact.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  package-windows:
+    name: Installer (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies (with node-pty prebuild)
+        run: npm ci
+
+      - name: Build installer
+        run: npm run dist
+
+      - name: Upload installer
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hekaton-windows
+          path: out/Hekaton-Setup-*.exe
+          if-no-files-found: error
+
+  package-linux:
+    name: AppImage and deb (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build AppImage and deb
+        run: npm run dist:linux
+
+      - name: Upload packages
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hekaton-linux
+          path: |
+            out/Hekaton-*.AppImage
+            out/Hekaton-*.deb
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [package-windows, package-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Download packages
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: packages
+          merge-multiple: true
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" packages/* \
+            --title "Hekaton $GITHUB_REF_NAME" \
+            --generate-notes

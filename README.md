@@ -51,7 +51,8 @@ Windows 11 first; the platform-specific bits (binary path, window chrome, ConPTY
   24.04 an AppImage may need `--no-sandbox` because of the AppArmor user-namespace restriction.
 - macOS: `npm run dist:mac` builds a dmg; unsigned, so first launch is right-click, Open.
 - CI builds the Windows installer and the Linux packages on every push to main and keeps them as
-  workflow artifacts.
+  workflow artifacts. Pushing a `v*` tag (`git tag v0.2.0 && git push origin v0.2.0`) builds them again
+  and publishes a GitHub Release with the packages attached. Builds are unsigned.
 
 Claude Code must be installed on the machine (`~/.local/bin/claude`, or on the PATH, or set under
 Settings, Paths); Hekaton launches it and never bundles it.
