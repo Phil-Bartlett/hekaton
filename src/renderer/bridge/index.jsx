@@ -4,7 +4,9 @@ import HistoryDialog from "./HistoryDialog.jsx";
 import MonitorMap from "./MonitorMap.jsx";
 import ProfileEditor from "./ProfileEditor.jsx";
 import ProfilesRail from "./ProfilesRail.jsx";
+import ReferenceDialog from "./ReferenceDialog.jsx";
 import SessionCard, { ExternalSessionCard } from "./SessionCard.jsx";
+import UsagePanel from "./UsagePanel.jsx";
 import CaptionButtons from "../shared/CaptionButtons.jsx";
 import "../shared/theme.css";
 import "./bridge.css";
@@ -76,8 +78,10 @@ function HistoryIcon() {
 
 function App() {
   const state = useBridgeState();
+  const now = useNow(5000);
   const [editing, setEditing] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [referenceKind, setReferenceKind] = useState(null);
   const [chrome, setChrome] = useState({ maximized: false });
 
   useEffect(() => {
@@ -116,10 +120,25 @@ function App() {
         )}
       </main>
       <footer className="status-bar">
+        <UsagePanel usage={state.usage} fx={state.fx} now={now} />
         <MonitorMap displays={state.displays} sessions={state.sessions} />
+        <nav className="status-bar__links" aria-label="Reference">
+          <button type="button" onClick={() => setReferenceKind("command")}>
+            Slash Commands
+          </button>
+          <button type="button" onClick={() => setReferenceKind("skill")}>
+            Skills
+          </button>
+          <button type="button" onClick={() => setReferenceKind("agent")}>
+            Agents
+          </button>
+        </nav>
         <span className="status-bar__version">v{state.version}</span>
       </footer>
       {historyOpen && <HistoryDialog fx={state.fx} onClose={() => setHistoryOpen(false)} />}
+      {referenceKind && (
+        <ReferenceDialog initialKind={referenceKind} settings={state.settings} onClose={() => setReferenceKind(null)} />
+      )}
     </>
   );
 }

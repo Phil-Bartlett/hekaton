@@ -65,15 +65,18 @@ export default function MonitorMap({ displays, sessions }) {
 
   return (
     <div className="monitor-map" ref={hostRef} style={{ width, height: MAP_HEIGHT }} aria-label="Monitor map">
-      {displays.map((display) => {
+      {displays.map((display, index) => {
         const pos = toMap(display.bounds.x, display.bounds.y);
+        const title = `${display.label || `Display ${index + 1}`} · ${display.bounds.width}×${display.bounds.height}${display.primary ? " · primary" : ""}`;
         return (
           <div
             key={display.id}
             className="monitor-map__display"
-            title={display.label}
+            title={title}
             style={{ ...pos, width: display.bounds.width * scale, height: display.bounds.height * scale }}
-          />
+          >
+            <span className="monitor-map__label">{index + 1}</span>
+          </div>
         );
       })}
       {sessions

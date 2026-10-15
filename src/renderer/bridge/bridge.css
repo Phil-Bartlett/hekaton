@@ -430,9 +430,9 @@
 
 .status-bar {
   flex: none;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: center;
   gap: 12px;
   min-height: 28px;
   padding: 6px 12px;
@@ -440,6 +440,216 @@
   color: var(--fg-muted);
   font-size: 11px;
   position: relative;
+}
+
+/* ---- Usage panel -------------------------------------------------------- */
+
+.usage {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 260px;
+  padding-right: 12px;
+  border-right: 1px solid #2e2e2e;
+  align-self: stretch;
+  justify-content: center;
+}
+
+.usage__limit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  --usage-color: #22c55e;
+}
+
+.usage__limit.is-amber {
+  --usage-color: #f59e0b;
+}
+
+.usage__limit.is-red {
+  --usage-color: #ef4444;
+}
+
+.usage__label strong {
+  color: var(--fg);
+}
+
+.usage__reset {
+  opacity: 0.8;
+}
+
+.usage__bar {
+  height: 4px;
+  background: #3a3a3a;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.usage__fill {
+  height: 100%;
+  background: var(--usage-color);
+}
+
+.usage__updated,
+.usage__empty,
+.usage__rolling {
+  white-space: nowrap;
+}
+
+.status-bar__links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+  justify-self: end;
+  width: 150px;
+  padding-right: 60px;
+}
+
+.status-bar__links button {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #2a2a2a;
+  color: var(--fg);
+  border: 1px solid #444;
+  cursor: pointer;
+}
+
+.status-bar__links button:hover {
+  background: #353535;
+}
+
+.monitor-map__label {
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  font-size: 9px;
+  color: var(--fg-muted);
+  pointer-events: none;
+}
+
+/* ---- Reference dialog --------------------------------------------------- */
+
+.dialog--wide {
+  width: min(760px, 92vw);
+  max-height: 86vh;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid #2e2e2e;
+}
+
+.tabs__tab {
+  font: inherit;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.tabs__tab.is-active {
+  color: var(--fg);
+  border-bottom-color: #22c55e;
+}
+
+.tabs__tools {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  padding-bottom: 6px;
+}
+
+.tabs__tools button {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #2a2a2a;
+  color: var(--fg);
+  border: 1px solid #444;
+  cursor: pointer;
+}
+
+.ref-group__title {
+  margin: 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ref-entry {
+  background: var(--bg-elevated);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ref-entry__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ref-entry__name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.ref-entry__head button {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: #2a2a2a;
+  color: var(--fg);
+  border: 1px solid #444;
+  cursor: pointer;
+}
+
+.ref-entry__facts {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.ref-entry__facts strong {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.ref-entry__description {
+  margin: 0;
+  font-size: 13px;
+}
+
+.ref-entry__preview {
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 96px;
+  overflow: hidden;
+  background: #1f1f1f;
+  border-radius: 4px;
+  color: var(--fg-muted);
+  font-family: "Cascadia Mono", Consolas, Menlo, monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .status-bar__version {
@@ -465,8 +675,10 @@
 
 .monitor-map__session {
   position: absolute;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.5);
   border-radius: 2px;
-  opacity: 0.85;
+  opacity: 0.7;
   cursor: grab;
   touch-action: none;
 }

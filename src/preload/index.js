@@ -49,6 +49,9 @@ contextBridge.exposeInMainWorld("hekaton", {
     moveTo: (id, x, y) => ipcRenderer.send(CH.sessionMoveTo, id, x, y),
     history: () => ipcRenderer.invoke(CH.historyList),
     resume: (entry) => ipcRenderer.invoke(CH.historyResume, entry),
+    reference: () => ipcRenderer.invoke(CH.referenceList),
+    openPath: (file) => ipcRenderer.invoke(CH.referenceOpen, file),
+    saveSettings: (patch) => ipcRenderer.invoke(CH.settingsSave, patch),
     pickFolder: () => ipcRenderer.invoke(CH.dialogPickFolder),
   },
 });

@@ -18,12 +18,28 @@ function writeJson(file, value) {
   renameSync(tmp, file);
 }
 
-// Launch profiles, persisted as one JSON file in the app's user-data folder.
+export const DEFAULT_SETTINGS = Object.freeze({
+  referenceRoots: [],
+  statusAppearance: {},
+  terminal: { fontFamily: "", fontSize: 14 },
+  hotkey: "",
+  theme: "dark",
+});
+
+// Launch profiles and app settings, each one JSON file in the user-data folder.
 export function createStore() {
   const dir = app.getPath("userData");
   mkdirSync(dir, { recursive: true });
   const profilesFile = path.join(dir, "profiles.json");
+  const settingsFile = path.join(dir, "settings.json");
   let profiles = readJson(profilesFile, []);
+  let settings = { ...DEFAULT_SETTINGS, ...readJson(settingsFile, {}) };
+
+  function saveSettings(patch) {
+    settings = { ...settings, ...patch };
+    writeJson(settingsFile, settings);
+    return settings;
+  }
 
   function saveProfile(profile) {
     const name = String(profile.name ?? "").trim();
@@ -44,5 +60,5 @@ export function createStore() {
     return profiles.find((p) => p.id === idOrName || p.name === idOrName) ?? null;
   }
 
-  return { profiles: () => profiles, saveProfile, deleteProfile, findProfile };
+  return { profiles: () => profiles, saveProfile, deleteProfile, findProfile, settings: () => settings, saveSettings };
 }

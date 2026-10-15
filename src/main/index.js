@@ -1,13 +1,15 @@
-import { app, dialog, ipcMain } from "electron";
+import { app, dialog, ipcMain, shell } from "electron";
 import os from "node:os";
 import { CH } from "../shared/channels.js";
 import { createFx } from "./fx.js";
 import { createHistory } from "./history.js";
 import { computeBounds } from "./placement.js";
 import { watchRegistry } from "./registry.js";
+import { scanReference } from "./scanner.js";
 import { createSessionManager } from "./sessions.js";
 import { createStore } from "./store.js";
 import { startTelemetryServer } from "./telemetry.js";
+import { createUsage } from "./usage.js";
 import { createWindowManager, listDisplays } from "./windows.js";
 
 // xterm's ConPTY quirk handling is keyed on the Windows build number.
@@ -26,6 +28,7 @@ let sessions = null;
 let store = null;
 let history = null;
 let fx = null;
+let usage = null;
 let registry = [];
 const recorded = new Set();
 
@@ -44,7 +47,9 @@ function snapshot() {
     version: app.getVersion(),
     platform: process.platform,
     fx: fx.current(),
+    usage: usage.current(),
     displays: listDisplays(),
+    settings: store.settings(),
     profiles: store.profiles(),
     sessions: sessions.list().map((session) => ({ ...session, bounds: windows.sessionBounds(session.id) })),
     external: externalSessions(),
@@ -199,6 +204,24 @@ ipcMain.on(CH.sessionMoveTo, (event, id, x, y) => {
   if (fromBridge(event)) windows.moveSession(id, x, y);
 });
 ipcMain.handle(CH.historyList, (event) => (fromBridge(event) ? history.list() : []));
+ipcMain.handle(CH.referenceList, (event) =>
+  fromBridge(event)
+    ? scanReference({
+        projectDirs: store.profiles().map((profile) => profile.cwd),
+        customRoots: store.settings().referenceRoots,
+      })
+    : [],
+);
+// Only Markdown files may be opened, which is everything the scanner lists.
+ipcMain.handle(CH.referenceOpen, (event, file) =>
+  fromBridge(event) && typeof file === "string" && file.endsWith(".md") ? shell.openPath(file) : null,
+);
+ipcMain.handle(CH.settingsSave, (event, patch) => {
+  if (!fromBridge(event) || !patch || typeof patch !== "object") return null;
+  const saved = store.saveSettings(patch);
+  broadcast();
+  return saved;
+});
 ipcMain.handle(CH.historyResume, (event, entry) => (fromBridge(event) ? resumeFromHistory(entry) : null));
 ipcMain.handle(CH.dialogPickFolder, async (event) => {
   if (!fromBridge(event)) return null;
@@ -209,13 +232,16 @@ ipcMain.handle(CH.dialogPickFolder, async (event) => {
 app.on("second-instance", () => windows.createBridgeWindow());
 
 app.whenReady().then(async () => {
-  const telemetryServer = await startTelemetryServer((kind, id, payload) =>
-    kind === "hook" ? sessions.applyHook(id, payload) : sessions.applyStatus(id, payload),
-  );
+  const telemetryServer = await startTelemetryServer((kind, id, payload) => {
+    if (kind === "hook") return sessions.applyHook(id, payload);
+    usage.update(payload);
+    return sessions.applyStatus(id, payload);
+  });
   console.log(`telemetry receiver on 127.0.0.1:${telemetryServer.port}`);
   store = createStore();
   history = createHistory();
   fx = createFx();
+  usage = createUsage();
   sessions = createSessionManager(onSessionEvent, telemetryServer);
   watchRegistry((rows) => {
     registry = rows;
