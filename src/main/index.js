@@ -187,12 +187,19 @@ function resumeInstance(id) {
     accent: entry.accent ?? undefined,
     colorScope: entry.colorScope ?? "border+title",
   };
-  // The transcript path survives a move to another profile's folder; the bare
-  // id only resolves from the folder the conversation was recorded in.
-  const resume =
-    entry.transcriptPath && existsSync(entry.transcriptPath) ? entry.transcriptPath : entry.claudeSessionId;
+  // Resume by id keeps Claude's own name for the conversation; the bare id
+  // only resolves from the folder it was recorded in, so a card moved to
+  // another folder resumes by transcript path and carries its saved name.
+  const cwd = entry.cwd || profile.cwd;
+  const moved = entry.recordedCwd && entry.recordedCwd !== cwd;
+  const byPath = moved && entry.transcriptPath && existsSync(entry.transcriptPath);
   return launchProfile(
-    { ...profile, cwd: entry.cwd || profile.cwd, resume },
+    {
+      ...profile,
+      cwd,
+      resume: byPath ? entry.transcriptPath : entry.claudeSessionId,
+      sessionName: byPath ? entry.title : null,
+    },
     { id, bounds: entry.bounds, pinned: entry.pinned, trayOpen: entry.trayOpen },
   );
 }

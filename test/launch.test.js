@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { claudeArgs, HOOK_EVENTS, launchEnv, NESTED_SESSION_MARKERS, sessionSettings } from "../src/main/launch.js";
+import {
+  claudeArgs,
+  HOOK_EVENTS,
+  launchEnv,
+  launchName,
+  NESTED_SESSION_MARKERS,
+  sessionSettings,
+} from "../src/main/launch.js";
 
 describe("claudeArgs", () => {
   it("passes a fresh session id when not resuming", () => {
@@ -33,6 +40,14 @@ describe("claudeArgs", () => {
 
   it("omits every flag without a value", () => {
     expect(claudeArgs({})).toEqual([]);
+  });
+});
+
+describe("launchName", () => {
+  it("names a fresh session after its profile and leaves a resumed one alone", () => {
+    expect(launchName({ name: "Argus" })).toBe("Argus");
+    expect(launchName({ name: "Argus", resume: "abc" })).toBeUndefined();
+    expect(launchName({ name: "Argus", resume: "C:/t.jsonl", sessionName: "Talos Build" })).toBe("Talos Build");
   });
 });
 

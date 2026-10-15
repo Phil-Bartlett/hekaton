@@ -112,6 +112,8 @@ export function createInstances({ file }) {
       accent: profile.accent ?? null,
       colorScope: profile.colorScope ?? entry.colorScope,
       cwd: profile.cwd,
+      // Where the conversation was recorded; a resume from elsewhere goes by transcript path.
+      recordedCwd: entry.recordedCwd ?? entry.cwd,
     };
     entries.set(id, moved);
     save();

@@ -25,6 +25,14 @@ export const NESTED_SESSION_MARKERS = [
   "CLAUDE_PROJECT_DIR",
 ];
 
+// A fresh session is named after its profile. A resumed conversation keeps
+// whatever name Claude already holds for it, unless Hekaton recorded one
+// (the case after a move, where a path resume loses it).
+export function launchName(profile) {
+  if (!profile.resume) return profile.name;
+  return profile.sessionName || undefined;
+}
+
 export function claudeArgs({
   name,
   model,

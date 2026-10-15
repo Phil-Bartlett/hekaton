@@ -4,7 +4,7 @@ import path from "node:path";
 import { app } from "electron";
 import pty from "node-pty";
 import { userStatusLineCommand } from "./claudeConfig.js";
-import { claudeArgs, launchEnv, sessionSettings } from "./launch.js";
+import { claudeArgs, launchEnv, launchName, sessionSettings } from "./launch.js";
 import { claudeBinary, resourcePath } from "./platform.js";
 import { applyExit, applyHook, applyStatus, initialTelemetry } from "./state.js";
 import { tailTranscript } from "./transcript.js";
@@ -71,7 +71,8 @@ export function createSessionManager(emit, telemetryServer) {
     const id = givenId ?? randomUUID();
     const sessionId = profile.resume ? profile.resume : randomUUID();
     const settingsPath = writeSettings(id);
-    const term = pty.spawn(claudeBinary(binary), claudeArgs({ ...profile, sessionId, settingsPath }), {
+    const args = claudeArgs({ ...profile, name: launchName(profile), sessionId, settingsPath });
+    const term = pty.spawn(claudeBinary(binary), args, {
       name: "xterm-256color",
       cols: DEFAULT_COLS,
       rows: DEFAULT_ROWS,
