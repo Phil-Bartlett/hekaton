@@ -102,4 +102,28 @@ describe("createTurnBuilder", () => {
     expect(turns).toHaveLength(50);
     expect(turns[0].prompt).toBe("prompt 10");
   });
+
+  it("banks the cost of dropped turns into the whole-session summary", () => {
+    const builder = createTurnBuilder();
+    let second = 0;
+    for (let i = 0; i < 60; i += 1) {
+      builder.push(user((second += 1), `prompt ${i}`));
+      builder.push(assistant((second += 1), `msg_${i}`, { type: "text", text: "ok" }));
+    }
+    const perTurn = builder.turns()[0].costUsd;
+    const summary = builder.summary();
+    expect(summary.droppedTurns).toBe(10);
+    expect(summary.unpriced).toBe(false);
+    // Sixty turns of equal cost, whether still shown or aged out of the window.
+    expect(summary.totalCostUsd).toBeCloseTo(perTurn * 60, 9);
+  });
+
+  it("marks the summary unpriced once any turn used an unknown model", () => {
+    const builder = createTurnBuilder();
+    builder.push(user(0, "go"));
+    const record = assistant(1, "msg_x", { type: "text", text: "ok" });
+    record.message.model = "claude-mystery-9";
+    builder.push(record);
+    expect(builder.summary().unpriced).toBe(true);
+  });
 });

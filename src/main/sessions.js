@@ -54,9 +54,9 @@ export function createSessionManager(emit, telemetryServer) {
     if (!transcriptPath || transcriptPath === session.transcriptPath) return;
     session.stopTail?.();
     session.transcriptPath = transcriptPath;
-    session.stopTail = tailTranscript(transcriptPath, (turns) => {
-      session.activity = turns;
-      emit("activity", session.id, turns);
+    session.stopTail = tailTranscript(transcriptPath, (activity) => {
+      session.activity = activity;
+      emit("activity", session.id, activity);
     });
   }
 
@@ -92,7 +92,7 @@ export function createSessionManager(emit, telemetryServer) {
       exitCode: null,
       telemetry: initialTelemetry(),
       trayOpen: trayOpen ?? profile.openTray === true,
-      activity: [],
+      activity: { turns: [], totalCostUsd: 0, unpriced: false, droppedTurns: 0 },
       transcriptPath: null,
       settingsPath,
       stopTail: null,

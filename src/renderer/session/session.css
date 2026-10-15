@@ -80,6 +80,35 @@
   margin: 24px 0;
 }
 
+.activity-tray__totals {
+  flex: none;
+  border-top: 1px solid var(--border);
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.activity-tray__total {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.activity-tray__totals .activity-tray__total:last-child {
+  text-align: right;
+}
+
+.activity-tray__total-label {
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.activity-tray__total-value {
+  font-variant-numeric: tabular-nums;
+}
+
 .turn__time {
   color: var(--fg-muted);
   font-size: 11px;

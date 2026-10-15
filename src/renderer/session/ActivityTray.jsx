@@ -52,8 +52,12 @@ function Turn({ turn, fx }) {
 }
 
 // Per-prompt activity from the transcript: tool calls, tokens and cost.
-export default function ActivityTray({ turns, fx }) {
+// `activity` carries the visible turns and a whole-session estimate;
+// `reportedCostUsd` is Claude's own figure from the title bar, shown beside
+// the estimate so the two numbers are not mistaken for the same measurement.
+export default function ActivityTray({ activity, reportedCostUsd, fx }) {
   const listRef = useRef(null);
+  const { turns, totalCostUsd, unpriced, droppedTurns } = activity;
 
   useEffect(() => {
     const list = listRef.current;
@@ -68,6 +72,30 @@ export default function ActivityTray({ turns, fx }) {
           <Turn key={turn.at} turn={turn} fx={fx} />
         ))}
       </div>
+      <footer className="activity-tray__totals">
+        <span className="activity-tray__total">
+          <span
+            className="activity-tray__total-label"
+            title="Hekaton's estimate from the price table, over the whole session"
+          >
+            Estimated{droppedTurns > 0 ? " (full session)" : ""}
+          </span>
+          {unpriced ? (
+            <span className="activity-tray__total-value">n/a</span>
+          ) : (
+            <Money usd={totalCostUsd} fx={fx} className="activity-tray__total-value" />
+          )}
+        </span>
+        <span className="activity-tray__total">
+          <span
+            className="activity-tray__total-label"
+            title="Claude's own reported cost for this session, shown in the title bar"
+          >
+            Claude reports
+          </span>
+          <Money usd={reportedCostUsd} fx={fx} className="activity-tray__total-value" />
+        </span>
+      </footer>
     </aside>
   );
 }

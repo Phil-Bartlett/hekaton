@@ -45,12 +45,19 @@ export function createTurnBuilder() {
   const turns = [];
   const seenMessages = new Set();
   const openTools = new Map();
+  // Turns aged out of the window still count towards the session estimate.
+  const dropped = { costUsd: 0, unpriced: false, count: 0 };
 
   const current = () => turns[turns.length - 1];
 
   function startTurn(at, prompt) {
     turns.push({ at, prompt, model: null, tools: [], usage: emptyUsage(), costUsd: 0, unpriced: false, durationMs: 0 });
-    if (turns.length > MAX_TURNS) turns.shift();
+    if (turns.length > MAX_TURNS) {
+      const gone = turns.shift();
+      dropped.costUsd += gone.costUsd;
+      dropped.unpriced = dropped.unpriced || gone.unpriced;
+      dropped.count += 1;
+    }
   }
 
   function userRecord(at, message) {
@@ -110,13 +117,25 @@ export function createTurnBuilder() {
     else if (record.type === "assistant") assistantRecord(at, message);
   }
 
-  return { push, turns: () => turns };
+  // Whole-session estimate: the turns still shown plus the ones aged out of
+  // the window. A pricing-table estimate, not Claude's own cost figure.
+  function summary() {
+    let totalCostUsd = dropped.costUsd;
+    let unpriced = dropped.unpriced;
+    for (const turn of turns) {
+      totalCostUsd += turn.costUsd;
+      unpriced = unpriced || turn.unpriced;
+    }
+    return { totalCostUsd, unpriced, droppedTurns: dropped.count };
+  }
+
+  return { push, turns: () => turns, summary };
 }
 
 // Follows a transcript file as it grows. A one-second stat poll is used
 // rather than fs.watch, which misses appends on Windows. The callback gets
-// the full turn list each time new records arrive.
-export function tailTranscript(filePath, onTurns) {
+// the visible turns and the whole-session estimate each time records arrive.
+export function tailTranscript(filePath, onActivity) {
   const builder = createTurnBuilder();
   let offset = 0;
   let remainder = "";
@@ -162,7 +181,7 @@ export function tailTranscript(filePath, onTurns) {
     stream.on("end", () => {
       offset = size;
       reading = false;
-      onTurns(builder.turns());
+      onActivity({ turns: builder.turns(), ...builder.summary() });
       if (again) {
         again = false;
         readMore();
