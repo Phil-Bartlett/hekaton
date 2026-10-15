@@ -5,7 +5,7 @@ import { claudeHome } from "./claudeConfig.js";
 const DEBOUNCE_MS = 400;
 const POLL_MS = 10_000;
 
-function alive(pid) {
+export function alive(pid) {
   try {
     process.kill(pid, 0);
     return true;

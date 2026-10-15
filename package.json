@@ -62,6 +62,10 @@
         "to": "scripts/statusline-relay.sh"
       },
       {
+        "from": "scripts/end-session.ps1",
+        "to": "scripts/end-session.ps1"
+      },
+      {
         "from": "build/icon.png",
         "to": "icon.png"
       }

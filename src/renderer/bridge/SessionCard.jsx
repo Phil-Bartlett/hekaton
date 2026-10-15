@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatElapsed } from "../shared/format.js";
 import Money from "../shared/Money.jsx";
 import { statusAppearance } from "../shared/statusStates.js";
@@ -145,6 +145,10 @@ export function DormantCard({ entry, now, fx, appearance, profiles, showNames, d
   // Still alive somewhere else: resuming would start a second copy.
   const orphan = Boolean(entry.runningPid);
   const elsewhere = entry.foreignHost ?? null;
+  const [ending, setEnding] = useState(false);
+  useEffect(() => {
+    if (!orphan) setEnding(false);
+  }, [orphan]);
   return (
     <article
       className={`card card--dormant${dragClass}`}
@@ -181,10 +185,14 @@ export function DormantCard({ entry, now, fx, appearance, profiles, showNames, d
           <button
             type="button"
             className="button--primary"
-            title="This conversation is still running outside Hekaton; end that copy before resuming it here"
-            onClick={() => bridge.endOrphan(entry.id)}
+            disabled={ending}
+            title="This conversation is still running outside Hekaton. Asks that copy to quit (it types /exit for you); then the card can be resumed here"
+            onClick={async () => {
+              setEnding(true);
+              if (!(await bridge.endOrphan(entry.id))) setEnding(false);
+            }}
           >
-            End outside copy
+            {ending ? "Ending…" : "End outside copy"}
           </button>
         ) : (
           <button

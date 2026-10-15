@@ -8,10 +8,11 @@ import { createFx } from "./fx.js";
 import { createHistory } from "./history.js";
 import { createInstances, summarise } from "./instances.js";
 import { computeBounds } from "./placement.js";
-import { watchRegistry } from "./registry.js";
+import { readRegistry, watchRegistry } from "./registry.js";
 import { scanReference } from "./scanner.js";
 import { listConversations } from "./conversations.js";
 import { createDataDir } from "./dataDir.js";
+import { endOutsideSession } from "./endOutside.js";
 import { createSessionManager } from "./sessions.js";
 import { attentionFor } from "./state.js";
 import { createStore } from "./store.js";
@@ -463,18 +464,16 @@ ipcMain.handle(CH.conversationsList, (event) =>
 ipcMain.handle(CH.conversationsAdopt, (event, sessionId, profileId) =>
   fromBridge(event) ? adoptConversation(sessionId, profileId) : null,
 );
-// End a Claude process that is running a saved card's conversation outside
+// End the Claude process running a saved card's conversation outside
 // Hekaton, so the card can be resumed here.
-ipcMain.handle(CH.instanceEndOrphan, (event, id) => {
+ipcMain.handle(CH.instanceEndOrphan, async (event, id) => {
   if (!fromBridge(event)) return false;
   const pid = annotateOrphans([instances.get(id)].filter(Boolean))[0]?.runningPid;
   if (!pid) return false;
-  try {
-    process.kill(pid);
-    return true;
-  } catch {
-    return false;
-  }
+  const { ended } = await endOutsideSession(pid);
+  registry = readRegistry();
+  broadcast();
+  return ended;
 });
 ipcMain.handle(CH.instanceOrder, (event, ids) => {
   if (!fromBridge(event) || !Array.isArray(ids)) return null;
