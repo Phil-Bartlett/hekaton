@@ -83,6 +83,29 @@ describe("createInstances", () => {
     expect(JSON.parse(readFileSync(file, "utf8")).instances).toEqual([]);
   });
 
+  it("keeps saved prompts, title and cost while a resumed session has none yet", () => {
+    const store = createInstances({ file });
+    store.record(summarise(session));
+    store.markDormant("inst-1");
+    const resumed = {
+      ...session,
+      telemetry: { claudeSessionId: null, model: null, firstPrompt: null, lastPrompt: null, totalCostUsd: 0 },
+    };
+    store.record(summarise(resumed));
+    expect(store.get("inst-1")).toMatchObject({
+      live: true,
+      firstPrompt: "first",
+      lastPrompt: "last",
+      model: "Opus",
+      totalCostUsd: 1.25,
+      claudeSessionId: "launch-uuid",
+    });
+    store.record(
+      summarise({ ...resumed, telemetry: { ...resumed.telemetry, lastPrompt: "newer", totalCostUsd: 0.5 } }),
+    );
+    expect(store.get("inst-1")).toMatchObject({ lastPrompt: "newer", totalCostUsd: 0.5 });
+  });
+
   it("ignores an unreadable or foreign state file", () => {
     rmSync(dir, { recursive: true, force: true });
     expect(createInstances({ file }).list()).toEqual([]);

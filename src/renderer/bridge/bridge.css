@@ -1197,3 +1197,68 @@
 .filter-row .filter {
   flex: 1;
 }
+
+/* ---- List view ------------------------------------------------------------ */
+
+.cards--list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cards--list .card {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+}
+
+.cards--list .card__head {
+  flex: 0 0 220px;
+  min-width: 0;
+}
+
+.cards--list .card__state {
+  flex: 0 0 170px;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.cards--list .card__context {
+  flex: 0 0 150px;
+}
+
+.cards--list .card__prompt {
+  flex: 1;
+  min-width: 0;
+  -webkit-line-clamp: 1;
+  padding: 4px 8px;
+}
+
+.cards--list .card__actions {
+  flex: none;
+}
+
+.cards--list .card__actions button {
+  flex: none;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.cards--list .card__terminate {
+  flex: none;
+  margin-top: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.cards--list .card__menu {
+  flex: none;
+}
+
+.cards--list .card__note {
+  flex: 1;
+}

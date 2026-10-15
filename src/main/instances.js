@@ -69,8 +69,16 @@ export function createInstances({ file }) {
     timer = setTimeout(saveNow, SAVE_DELAY_MS);
   }
 
+  // A resumed session starts with empty telemetry; what the card already
+  // knew (prompts, title, model, transcript) stays until real values arrive.
   function record(summary) {
-    entries.set(summary.id, { ...entries.get(summary.id), ...summary, live: true });
+    const previous = entries.get(summary.id) ?? {};
+    const merged = { ...previous, ...summary, live: true };
+    for (const key of ["firstPrompt", "lastPrompt", "title", "model", "transcriptPath", "bounds"]) {
+      if (merged[key] === null || merged[key] === undefined) merged[key] = previous[key] ?? null;
+    }
+    if (!summary.totalCostUsd && previous.totalCostUsd) merged.totalCostUsd = previous.totalCostUsd;
+    entries.set(summary.id, merged);
     save();
   }
 

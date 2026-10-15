@@ -72,9 +72,10 @@ const SORTS = [
   ["profile", "By profile"],
   ["recent", "Most recent"],
 ];
-const DENSITIES = [
-  ["comfortable", "Comfortable"],
-  ["compact", "Compact"],
+const VIEWS = [
+  ["comfortable", "Tiles"],
+  ["compact", "Compact tiles"],
+  ["list", "List"],
 ];
 
 // Live and saved cards in one list so they can be ordered together. Manual
@@ -110,7 +111,7 @@ function LayoutControls({ layout, onChange }) {
   return (
     <span className="layout-controls">
       {select("sort", SORTS, "Sort cards")}
-      {select("density", DENSITIES, "Card density")}
+      {select("density", VIEWS, "View")}
     </span>
   );
 }
@@ -138,6 +139,19 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
   const external = showExternal ? state.external : [];
   const empty = cards.length === 0 && external.length === 0;
 
+  // Dropping on a card takes its place: before it when dragging backwards,
+  // after it when dragging forwards, so the last slot is reachable. Dropping
+  // on empty space moves the card to the end.
+  function reordered(ids, dragging, target) {
+    const rest = ids.filter((id) => id !== dragging);
+    if (!target) return [...rest, dragging];
+    const from = ids.indexOf(dragging);
+    const to = ids.indexOf(target);
+    const at = rest.indexOf(target) + (from < to ? 1 : 0);
+    rest.splice(at, 0, dragging);
+    return rest;
+  }
+
   // Drag a card onto another to take its place; only meaningful in manual order.
   function dragProps(id) {
     if (layout.sort !== "manual") return {};
@@ -154,10 +168,15 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
       },
       onDrop: (event) => {
         event.preventDefault();
+        event.stopPropagation();
         if (!dragging || dragging === id) return;
-        const ids = cards.map((card) => card.id).filter((other) => other !== dragging);
-        ids.splice(ids.indexOf(id), 0, dragging);
-        bridge.reorder(ids);
+        bridge.reorder(
+          reordered(
+            cards.map((card) => card.id),
+            dragging,
+            id,
+          ),
+        );
         setDragging(null);
         setDropTarget(null);
       },
@@ -177,7 +196,25 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
         <ProfileFilter state={state} filter={filter} onChange={setFilter} />
         <LayoutControls layout={layout} onChange={(next) => bridge.saveSettings({ layout: next })} />
       </div>
-      <section className={`cards${layout.density === "compact" ? " cards--compact" : ""}`}>
+      <section
+        className={`cards${layout.density === "compact" ? " cards--compact" : ""}${layout.density === "list" ? " cards--list" : ""}`}
+        onDragOver={(event) => {
+          if (dragging) event.preventDefault();
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          if (!dragging) return;
+          bridge.reorder(
+            reordered(
+              cards.map((card) => card.id),
+              dragging,
+              null,
+            ),
+          );
+          setDragging(null);
+          setDropTarget(null);
+        }}
+      >
         {cards.map((card) => {
           const drag = { ...dragProps(card.id), className: dragClass(card.id) };
           return card.kind === "live" ? (
