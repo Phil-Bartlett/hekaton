@@ -26,8 +26,22 @@ npm install
 npm start
 ```
 
-Windows 11 first; the platform-specific bits (binary path, title bar, ConPTY option) live in
-`src/main/platform.js` so a macOS build is a packaging and test job.
+Windows 11 first; the platform-specific bits (binary path, window chrome, ConPTY option) live in
+`src/main/platform.js`.
+
+## Packages
+
+- Windows: `npm run dist` builds `out/Hekaton-Setup-<version>.exe` (per-user NSIS installer).
+- Linux: `npm run dist:linux` builds `out/Hekaton-<version>-x64.AppImage` and `.deb` (node-pty is
+  rebuilt for Electron first, as it ships no Linux prebuild). Install the deb with
+  `sudo apt install ./Hekaton-<version>-amd64.deb`, or `chmod +x` the AppImage and run it. On Ubuntu
+  24.04 an AppImage may need `--no-sandbox` because of the AppArmor user-namespace restriction.
+- macOS: `npm run dist:mac` builds a dmg; unsigned, so first launch is right-click, Open.
+- CI builds the Windows installer and the Linux packages on every push to main and keeps them as
+  workflow artifacts.
+
+Claude Code must be installed on the machine (`~/.local/bin/claude`, or on the PATH, or set under
+Settings, Paths); Hekaton launches it and never bundles it.
 
 ## Layout
 

@@ -48,6 +48,14 @@ describe("launchEnv", () => {
     expect(env.HEKATON_INSTANCE).toBe("id-1");
   });
 
+  it("scrubs colour-disabling variables and guarantees a colour terminal type", () => {
+    const env = launchEnv({ NO_COLOR: "1", FORCE_COLOR: "0", TERM: "dumb" }, {});
+    expect(env).not.toHaveProperty("NO_COLOR");
+    expect(env).not.toHaveProperty("FORCE_COLOR");
+    expect(env.TERM).toBe("xterm-256color");
+    expect(launchEnv({ TERM: "screen-256color" }, {}).TERM).toBe("screen-256color");
+  });
+
   it("does not mutate the base environment", () => {
     const base = { CLAUDECODE: "1" };
     launchEnv(base, {});

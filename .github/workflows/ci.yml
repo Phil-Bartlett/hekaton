@@ -38,8 +38,8 @@ jobs:
       - name: shellcheck
         run: shellcheck scripts/*.sh
 
-  bundle:
-    name: Bundle on Windows
+  package-windows:
+    name: Installer (Windows)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
@@ -53,5 +53,41 @@ jobs:
       - name: Install dependencies (with node-pty prebuild)
         run: npm ci
 
-      - name: Build bundles
-        run: node scripts/build.mjs
+      - name: Build installer
+        run: npm run dist
+
+      - name: Upload installer
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hekaton-windows
+          path: out/Hekaton-Setup-*.exe
+          if-no-files-found: error
+
+  package-linux:
+    name: AppImage and deb (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      # node-pty has no Linux prebuild: npm ci compiles it for Node, and the
+      # dist script rebuilds it for Electron's ABI before packaging.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build AppImage and deb
+        run: npm run dist:linux
+
+      - name: Upload packages
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hekaton-linux
+          path: |
+            out/Hekaton-*.AppImage
+            out/Hekaton-*.deb
+          if-no-files-found: error

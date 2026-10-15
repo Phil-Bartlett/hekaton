@@ -5,6 +5,7 @@ import path from "node:path";
 
 export const IS_MAC = process.platform === "darwin";
 export const IS_WINDOWS = process.platform === "win32";
+export const IS_LINUX = process.platform === "linux";
 
 // Files shipped next to the app: the project root in development (the main
 // bundle sits in dist/), the resources folder once packaged.
@@ -25,7 +26,8 @@ export function claudeBinary(override) {
 // The title bar is ours on every platform. macOS keeps its traffic lights,
 // inset to sit on the bar; Windows and Linux get caption buttons drawn by the
 // renderer, because the native overlay paints an opaque box that cuts the
-// accent frame at the corner.
+// accent frame at the corner. Linux ignores titleBarStyle, so it gets a plain
+// frameless window instead.
 export function titleBarOptions({ height }) {
   if (IS_MAC) {
     return {
@@ -33,5 +35,6 @@ export function titleBarOptions({ height }) {
       trafficLightPosition: { x: 12, y: Math.round((height - 14) / 2) },
     };
   }
+  if (IS_LINUX) return { frame: false };
   return { titleBarStyle: "hidden" };
 }

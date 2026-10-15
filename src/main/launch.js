@@ -52,9 +52,14 @@ export function claudeArgs({
   return args;
 }
 
+// Whatever launched Hekaton may have had colour switched off (a tool
+// shell, a CI runner); the terminal here is a full colour xterm regardless.
+const NO_COLOUR_MARKERS = ["NO_COLOR", "FORCE_COLOR"];
+
 export function launchEnv(baseEnv, extra) {
   const env = { ...baseEnv };
-  for (const key of NESTED_SESSION_MARKERS) delete env[key];
+  for (const key of [...NESTED_SESSION_MARKERS, ...NO_COLOUR_MARKERS]) delete env[key];
+  if (!env.TERM || env.TERM === "dumb") env.TERM = "xterm-256color";
   return { ...env, ...extra };
 }
 

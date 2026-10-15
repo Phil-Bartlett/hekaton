@@ -17,7 +17,8 @@
     "rebuild": "electron-rebuild -f -w node-pty",
     "dist": "node scripts/build.mjs && electron-builder --win nsis",
     "dist:mac": "node scripts/build.mjs && electron-builder --mac dmg",
-    "icon": "electron scripts/icon.cjs"
+    "icon": "electron scripts/icon.cjs",
+    "dist:linux": "node scripts/build.mjs && electron-rebuild -f -w node-pty && electron-builder --linux"
   },
   "dependencies": {
     "@xterm/addon-fit": "0.11.0",
@@ -91,10 +92,33 @@
     },
     "linux": {
       "target": [
-        "AppImage"
-      ]
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Development",
+      "executableName": "hekaton",
+      "artifactName": "Hekaton-${version}-${arch}.${ext}",
+      "desktop": {
+        "entry": {
+          "Name": "Hekaton",
+          "Comment": "Window manager for Claude Code sessions"
+        }
+      }
     },
     "npmRebuild": false,
-    "nodeGypRebuild": false
+    "nodeGypRebuild": false,
+    "deb": {
+      "packageCategory": "devel"
+    }
   }
 }
