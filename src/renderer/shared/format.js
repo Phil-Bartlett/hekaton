@@ -23,6 +23,16 @@ export function formatUsd(value) {
   return `$${(value ?? 0).toFixed(4)}`;
 }
 
+export function formatGbp(usd, fx) {
+  return `£${((usd ?? 0) * (fx?.rate ?? 0)).toFixed(2)}`;
+}
+
+// Hover text for a pound figure: the true dollar amount and the rate used.
+export function moneyTitle(usd, fx) {
+  const rate = fx?.rate ? fx.rate.toFixed(4) : "?";
+  return `${formatUsd(usd)} at ${rate} USD→GBP${fx?.stale ? " (rate may be stale)" : ""}`;
+}
+
 export function formatClock(epochMs) {
   return new Date(epochMs).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }

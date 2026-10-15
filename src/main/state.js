@@ -18,6 +18,7 @@ export function initialTelemetry(at = Date.now()) {
     since: at,
     stateBeforeCompact: null,
     currentTool: null,
+    firstPrompt: null,
     lastPrompt: null,
     claudeSessionId: null,
     transcriptPath: null,
@@ -46,7 +47,11 @@ export function applyHook(telemetry, payload, at = Date.now()) {
     case "SessionStart":
       return transition(telemetry, STATES.idle, at, identity);
     case "UserPromptSubmit":
-      return transition(telemetry, STATES.running, at, { ...identity, lastPrompt: payload.prompt ?? null });
+      return transition(telemetry, STATES.running, at, {
+        ...identity,
+        firstPrompt: telemetry.firstPrompt ?? payload.prompt ?? null,
+        lastPrompt: payload.prompt ?? null,
+      });
     case "PreToolUse":
       return transition(telemetry, STATES.running, at, { ...identity, currentTool: payload.tool_name ?? null });
     case "PostToolUse":

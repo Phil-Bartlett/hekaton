@@ -44,6 +44,7 @@ Next: Phase 5 (monitor / size / position in the profile editor, monitor map, ses
 resume), then Phase 6 (usage panel, reference browser, settings, themes, installer).
 
 Traps:
+
 - pty output and state updates sent before a session window's renderer is listening are dropped by
   Electron, and Claude's TUI does not redraw on its own. Main buffers output per session and only
   streams live once the renderer calls `pty.attach()`, which returns the buffered scrollback.

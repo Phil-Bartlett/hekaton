@@ -1,5 +1,5 @@
 import CaptionButtons from "../shared/CaptionButtons.jsx";
-import { formatUsd } from "../shared/format.js";
+import Money from "../shared/Money.jsx";
 import { statusAppearance } from "../shared/statusStates.js";
 
 function Icon({ path }) {
@@ -52,7 +52,7 @@ export default function TitleBar({ session, chrome, trayOpen, onToggleTray, onTo
       <span className="title-bar__meta">{telemetry.model?.name ?? profile.model}</span>
       <span className="title-bar__meta">{profile.cwd}</span>
       <span className="title-bar__facts">
-        <span>{formatUsd(telemetry.totalCostUsd)}</span>
+        <Money usd={telemetry.totalCostUsd} fx={session.fx} />
         {telemetry.contextPct !== null && <span>ctx {Math.round(telemetry.contextPct)}%</span>}
       </span>
       <span className="title-bar__controls">

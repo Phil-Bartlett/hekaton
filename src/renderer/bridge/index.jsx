@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import HistoryDialog from "./HistoryDialog.jsx";
+import MonitorMap from "./MonitorMap.jsx";
 import ProfileEditor from "./ProfileEditor.jsx";
 import ProfilesRail from "./ProfilesRail.jsx";
 import SessionCard, { ExternalSessionCard } from "./SessionCard.jsx";
@@ -41,7 +43,7 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
       />
       <section className="cards">
         {state.sessions.map((session) => (
-          <SessionCard key={session.id} session={session} now={now} />
+          <SessionCard key={session.id} session={session} now={now} fx={state.fx} />
         ))}
         {state.external.map((session) => (
           <ExternalSessionCard key={session.sessionId} session={session} now={now} />
@@ -52,9 +54,30 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
   );
 }
 
+function HistoryIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      <path
+        d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v2.6h2.6M8 5v3.2l2.2 1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function App() {
   const state = useBridgeState();
   const [editing, setEditing] = useState(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [chrome, setChrome] = useState({ maximized: false });
 
   useEffect(() => {
@@ -72,18 +95,31 @@ function App() {
     <>
       <header className="title-bar">
         <span className="title-bar__name">Hekaton</span>
+        <span className="title-bar__tools">
+          <button
+            type="button"
+            className="title-bar__control"
+            title="Instance history"
+            aria-label="Instance history"
+            onClick={() => setHistoryOpen(true)}
+          >
+            <HistoryIcon />
+          </button>
+        </span>
         <CaptionButtons platform={state.platform} maximized={chrome.maximized} />
       </header>
       <main className="bridge">
         {editing ? (
-          <ProfileEditor profile={editing} onClose={() => setEditing(null)} />
+          <ProfileEditor profile={editing} displays={state.displays} onClose={() => setEditing(null)} />
         ) : (
           <Dashboard state={state} onEditProfile={setEditing} onNewProfile={() => setEditing({})} />
         )}
       </main>
       <footer className="status-bar">
+        <MonitorMap displays={state.displays} sessions={state.sessions} />
         <span className="status-bar__version">v{state.version}</span>
       </footer>
+      {historyOpen && <HistoryDialog fx={state.fx} onClose={() => setHistoryOpen(false)} />}
     </>
   );
 }

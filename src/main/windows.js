@@ -28,7 +28,23 @@ function forwardConsole(win, label) {
   });
 }
 
-export function createWindowManager() {
+export function listDisplays() {
+  const primaryId = screen.getPrimaryDisplay().id;
+  return screen.getAllDisplays().map((display, index) => ({
+    id: display.id,
+    label: display.label || `Display ${index + 1}`,
+    primary: display.id === primaryId,
+    bounds: display.bounds,
+    workArea: display.workArea,
+    scaleFactor: display.scaleFactor,
+  }));
+}
+
+const BOUNDS_THROTTLE_MS = 100;
+
+// `onSessionBounds(id)` fires, throttled, whenever a session window moves or
+// resizes, so the Bridge's monitor map can follow it.
+export function createWindowManager({ onSessionBounds }) {
   const sessionWindows = new Map();
   // Title-bar state the renderer draws, keyed by BrowserWindow id: the
   // maximise toggle for every window, always-on-top and the close lock for
@@ -88,10 +104,20 @@ export function createWindowManager() {
     bridge.focus();
   }
 
-  function createSessionWindow(session) {
+  function trackBounds(win, id) {
+    let timer = null;
+    const changed = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => onSessionBounds(id), BOUNDS_THROTTLE_MS);
+    };
+    win.on("move", changed);
+    win.on("resize", changed);
+    win.on("closed", () => clearTimeout(timer));
+  }
+
+  function createSessionWindow(session, bounds) {
     const win = new BrowserWindow({
-      width: 1280,
-      height: 800,
+      ...bounds,
       minWidth: 480,
       minHeight: 240,
       backgroundColor: BACKGROUND,
@@ -124,9 +150,26 @@ export function createWindowManager() {
       if (choice === 1) event.preventDefault();
     });
     trackChrome(win);
+    trackBounds(win, session.id);
+    if (session.profile.alwaysOnTop) {
+      win.setAlwaysOnTop(true);
+      chromeFor(win).pinned = true;
+    }
     forwardConsole(win, session.profile.name);
     win.loadFile(path.join(RENDERER_DIR, "session", "index.html"));
     return win;
+  }
+
+  function sessionBounds(id) {
+    return sessionWindow(id)?.getBounds() ?? null;
+  }
+
+  function moveSession(id, x, y) {
+    const win = sessionWindow(id);
+    if (!win || !Number.isFinite(x) || !Number.isFinite(y)) return;
+    const { width, height } = win.getBounds();
+    const display = screen.getDisplayMatching({ x: Math.round(x), y: Math.round(y), width, height });
+    fitToDisplay(win, display, { x, y });
   }
 
   function sessionWindow(id) {
@@ -150,8 +193,24 @@ export function createWindowManager() {
     win.focus();
   }
 
+  // Windows only re-fits a window to a new display's DPI during a manual
+  // drag, so every programmatic move clamps the window to the destination
+  // work area itself, and keeps it fully on that display.
+  function fitToDisplay(win, display, position) {
+    const area = display.workArea;
+    const current = win.getBounds();
+    const width = Math.min(current.width, area.width);
+    const height = Math.min(current.height, area.height);
+    const wanted = position ?? { x: area.x + (area.width - width) / 2, y: area.y + (area.height - height) / 2 };
+    const x = Math.min(Math.max(wanted.x, area.x), area.x + area.width - width);
+    const y = Math.min(Math.max(wanted.y, area.y), area.y + area.height - height);
+    win.setBounds({ x: Math.round(x), y: Math.round(y), width, height });
+  }
+
   function centerSession(id) {
-    sessionWindow(id)?.center();
+    const win = sessionWindow(id);
+    if (!win) return;
+    fitToDisplay(win, screen.getDisplayMatching(win.getBounds()));
     focusSession(id);
   }
 
@@ -161,9 +220,7 @@ export function createWindowManager() {
     if (!win) return;
     const display =
       bridge && !bridge.isDestroyed() ? screen.getDisplayMatching(bridge.getBounds()) : screen.getPrimaryDisplay();
-    const { x, y, width, height } = display.workArea;
-    const [w, h] = win.getSize();
-    win.setPosition(Math.round(x + (width - w) / 2), Math.round(y + (height - h) / 2));
+    fitToDisplay(win, display);
     focusSession(id);
   }
 
@@ -201,6 +258,8 @@ export function createWindowManager() {
     bridgeWindow: () => (bridge && !bridge.isDestroyed() ? bridge : null),
     createSessionWindow,
     sessionWindow,
+    sessionBounds,
+    moveSession,
     sendToSession,
     sendToBridge,
     focusSession,

@@ -61,7 +61,7 @@ export default function App() {
           <Terminal theme={TERMINAL_THEME} platform={session.platform} osBuild={session.osBuild} />
           {exitCode !== null && <div className="exit-banner">Claude exited with code {exitCode}</div>}
         </div>
-        {trayOpen && <ActivityTray turns={activity} />}
+        {trayOpen && <ActivityTray turns={activity} fx={session.fx} />}
       </main>
     </>
   );

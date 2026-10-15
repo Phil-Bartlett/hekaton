@@ -24,5 +24,8 @@ export const CH = Object.freeze({
   sessionCenter: "session:center",
   sessionBringHere: "session:bring-here",
   sessionTerminate: "session:terminate",
+  sessionMoveTo: "session:move-to",
+  historyList: "history:list",
+  historyResume: "history:resume",
   dialogPickFolder: "dialog:pick-folder",
 });

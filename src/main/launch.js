@@ -25,12 +25,23 @@ export const NESTED_SESSION_MARKERS = [
   "CLAUDE_PROJECT_DIR",
 ];
 
-export function claudeArgs({ name, model, effort, permissionMode, addDirs = [], settingsPath, sessionId, resume }) {
+export function claudeArgs({
+  name,
+  model,
+  effort,
+  permissionMode,
+  skipPermissions,
+  addDirs = [],
+  settingsPath,
+  sessionId,
+  resume,
+}) {
   const args = [];
   if (name) args.push("--name", name);
   if (model) args.push("--model", model);
   if (effort) args.push("--effort", effort);
   if (permissionMode) args.push("--permission-mode", permissionMode);
+  if (skipPermissions) args.push("--dangerously-skip-permissions");
   if (addDirs.length) args.push("--add-dir", ...addDirs);
   if (settingsPath) args.push("--settings", settingsPath);
   if (resume) {

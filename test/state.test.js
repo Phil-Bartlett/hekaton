@@ -26,6 +26,9 @@ describe("applyHook", () => {
     t = applyHook(t, hook("Stop"), 5);
     expect(t.state).toBe(STATES.idle);
     expect(t.currentTool).toBeNull();
+    t = applyHook(t, hook("UserPromptSubmit", { prompt: "now the tests" }), 6);
+    expect(t.firstPrompt).toBe("fix the bug");
+    expect(t.lastPrompt).toBe("now the tests");
   });
 
   it("keeps `since` while the state is unchanged", () => {

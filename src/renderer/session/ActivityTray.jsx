@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { formatClock, formatDuration, formatTokens, formatUsd } from "../shared/format.js";
+import { formatClock, formatDuration, formatTokens } from "../shared/format.js";
+import Money from "../shared/Money.jsx";
 
 const TOOL_GLYPHS = { Write: "✎", Edit: "✎", Read: "▪", Bash: "▸", PowerShell: "▸", Grep: "⌕", Glob: "⌕" };
 
@@ -17,7 +18,7 @@ function ToolRow({ tool }) {
   );
 }
 
-function Turn({ turn }) {
+function Turn({ turn, fx }) {
   const { usage } = turn;
   return (
     <article className="turn">
@@ -37,7 +38,7 @@ function Turn({ turn }) {
         </div>
         <div className="turn__chips">
           <span className="chip chip--time">{formatDuration(turn.durationMs)}</span>
-          <span className="chip chip--cost">{formatUsd(turn.costUsd)}</span>
+          <Money usd={turn.costUsd} fx={fx} className="chip chip--cost" />
         </div>
       </div>
     </article>
@@ -45,7 +46,7 @@ function Turn({ turn }) {
 }
 
 // Per-prompt activity from the transcript: tool calls, tokens and cost.
-export default function ActivityTray({ turns }) {
+export default function ActivityTray({ turns, fx }) {
   const listRef = useRef(null);
 
   useEffect(() => {
@@ -58,7 +59,7 @@ export default function ActivityTray({ turns }) {
       <div className="activity-tray__list" ref={listRef}>
         {turns.length === 0 && <p className="activity-tray__empty">No activity yet.</p>}
         {turns.map((turn) => (
-          <Turn key={turn.at} turn={turn} />
+          <Turn key={turn.at} turn={turn} fx={fx} />
         ))}
       </div>
     </aside>

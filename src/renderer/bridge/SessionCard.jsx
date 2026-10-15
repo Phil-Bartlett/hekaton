@@ -1,4 +1,5 @@
-import { formatElapsed, formatUsd } from "../shared/format.js";
+import { formatElapsed } from "../shared/format.js";
+import Money from "../shared/Money.jsx";
 import { statusAppearance } from "../shared/statusStates.js";
 import { DEFAULT_ACCENT } from "./ProfilesRail.jsx";
 
@@ -28,14 +29,14 @@ function ContextBar({ pct }) {
   );
 }
 
-export default function SessionCard({ session, now }) {
+export default function SessionCard({ session, now, fx }) {
   const { id, profile, telemetry } = session;
   const { bridge } = window.hekaton;
   return (
     <article className="card" style={{ "--accent": profile.accent ?? DEFAULT_ACCENT }}>
       <header className="card__head">
         <span className="card__name">{profile.name}</span>
-        <span className="card__cost">{formatUsd(telemetry.totalCostUsd)}</span>
+        <Money usd={telemetry.totalCostUsd} fx={fx} className="card__cost" />
       </header>
       <StateBar state={telemetry.state} detail={telemetry.currentTool} since={telemetry.since} now={now} />
       <ContextBar pct={telemetry.contextPct} />

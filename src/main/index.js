@@ -1,11 +1,14 @@
 import { app, dialog, ipcMain } from "electron";
 import os from "node:os";
 import { CH } from "../shared/channels.js";
+import { createFx } from "./fx.js";
+import { createHistory } from "./history.js";
+import { computeBounds } from "./placement.js";
 import { watchRegistry } from "./registry.js";
 import { createSessionManager } from "./sessions.js";
 import { createStore } from "./store.js";
 import { startTelemetryServer } from "./telemetry.js";
-import { createWindowManager } from "./windows.js";
+import { createWindowManager, listDisplays } from "./windows.js";
 
 // xterm's ConPTY quirk handling is keyed on the Windows build number.
 const OS_BUILD = Number(os.release().split(".")[2]) || 0;
@@ -18,10 +21,13 @@ function argValue(flag) {
 // A second launch just raises the Bridge of the running instance.
 if (!app.requestSingleInstanceLock()) app.quit();
 
-const windows = createWindowManager();
+const windows = createWindowManager({ onSessionBounds: () => broadcast() });
 let sessions = null;
 let store = null;
+let history = null;
+let fx = null;
 let registry = [];
+const recorded = new Set();
 
 // Sessions Claude Code knows about that this app did not launch.
 function externalSessions() {
@@ -37,14 +43,37 @@ function snapshot() {
   return {
     version: app.getVersion(),
     platform: process.platform,
+    fx: fx.current(),
+    displays: listDisplays(),
     profiles: store.profiles(),
-    sessions: sessions.list(),
+    sessions: sessions.list().map((session) => ({ ...session, bounds: windows.sessionBounds(session.id) })),
     external: externalSessions(),
   };
 }
 
 function broadcast() {
   windows.sendToBridge(CH.bridgeState, snapshot());
+}
+
+// One history line per session, written when its Claude exits or it is
+// terminated while still running.
+function recordHistory(session) {
+  if (recorded.has(session.id)) return;
+  recorded.add(session.id);
+  const { profile, telemetry } = session;
+  history.record({
+    endedAt: Date.now(),
+    startedAt: session.startedAt,
+    profileId: profile.id ?? null,
+    profileName: profile.name,
+    accent: profile.accent ?? null,
+    cwd: profile.cwd,
+    firstPrompt: telemetry.firstPrompt,
+    totalCostUsd: telemetry.totalCostUsd,
+    claudeSessionId: telemetry.claudeSessionId,
+    transcriptPath: telemetry.transcriptPath,
+    exitCode: session.exitCode,
+  });
 }
 
 function logUpdate({ profile, telemetry }) {
@@ -57,21 +86,29 @@ function onSessionEvent(event, id, payload) {
   if (event === "data") windows.sendToSession(id, CH.ptyData, payload);
   if (event === "exit") {
     windows.sendToSession(id, CH.ptyExit, payload);
+    recordHistory(sessions.get(id));
     broadcast();
   }
   if (event === "update") {
     logUpdate(payload);
-    windows.sendToSession(id, CH.sessionUpdate, payload);
+    windows.sendToSession(id, CH.sessionUpdate, { ...payload, fx: fx.current() });
     broadcast();
   }
   if (event === "activity") windows.sendToSession(id, CH.sessionActivity, payload);
 }
 
+function forgetSession(id) {
+  const session = sessions.get(id);
+  if (session) recordHistory(session);
+  sessions.remove(id);
+  recorded.delete(id);
+}
+
 function launchProfile(profile) {
   const session = sessions.launch(profile);
-  const win = windows.createSessionWindow(session);
+  const win = windows.createSessionWindow(session, computeBounds(profile, listDisplays()));
   win.on("closed", () => {
-    sessions.remove(session.id);
+    forgetSession(session.id);
     broadcast();
   });
   broadcast();
@@ -79,9 +116,23 @@ function launchProfile(profile) {
 }
 
 function terminateSession(id) {
-  sessions.remove(id);
+  forgetSession(id);
   windows.closeSessionWindow(id);
   broadcast();
+}
+
+// Resume picks the saved profile back up when it still exists, otherwise a
+// stand-in built from what the history line remembers.
+function resumeFromHistory(entry) {
+  if (!entry?.claudeSessionId) return null;
+  const saved = store.findProfile(entry.profileId);
+  const profile = saved ?? {
+    name: entry.profileName,
+    cwd: entry.cwd,
+    accent: entry.accent ?? undefined,
+    colorScope: "border+title",
+  };
+  return launchProfile({ ...profile, cwd: entry.cwd || profile.cwd, resume: entry.claudeSessionId });
 }
 
 // A session renderer may only drive the session its own window was created
@@ -95,7 +146,9 @@ function fromBridge(event) {
 }
 
 ipcMain.handle(CH.sessionGet, (event, id) =>
-  ownsInstance(event, id) ? { ...sessions.get(id), osBuild: OS_BUILD, platform: process.platform } : null,
+  ownsInstance(event, id)
+    ? { ...sessions.get(id), osBuild: OS_BUILD, platform: process.platform, fx: fx.current() }
+    : null,
 );
 ipcMain.handle(CH.ptyAttach, (event, id) => (ownsInstance(event, id) ? sessions.attach(id) : null));
 ipcMain.on(CH.ptyWrite, (event, id, data) => {
@@ -142,6 +195,11 @@ ipcMain.on(CH.sessionBringHere, (event, id) => {
 ipcMain.on(CH.sessionTerminate, (event, id) => {
   if (fromBridge(event)) terminateSession(id);
 });
+ipcMain.on(CH.sessionMoveTo, (event, id, x, y) => {
+  if (fromBridge(event)) windows.moveSession(id, x, y);
+});
+ipcMain.handle(CH.historyList, (event) => (fromBridge(event) ? history.list() : []));
+ipcMain.handle(CH.historyResume, (event, entry) => (fromBridge(event) ? resumeFromHistory(entry) : null));
 ipcMain.handle(CH.dialogPickFolder, async (event) => {
   if (!fromBridge(event)) return null;
   const result = await dialog.showOpenDialog(windows.bridgeWindow(), { properties: ["openDirectory"] });
@@ -156,6 +214,8 @@ app.whenReady().then(async () => {
   );
   console.log(`telemetry receiver on 127.0.0.1:${telemetryServer.port}`);
   store = createStore();
+  history = createHistory();
+  fx = createFx();
   sessions = createSessionManager(onSessionEvent, telemetryServer);
   watchRegistry((rows) => {
     registry = rows;

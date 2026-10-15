@@ -22,6 +22,11 @@ describe("claudeArgs", () => {
     ]);
   });
 
+  it("adds the skip-permissions flag only when asked", () => {
+    expect(claudeArgs({ skipPermissions: true })).toEqual(["--dangerously-skip-permissions"]);
+    expect(claudeArgs({ skipPermissions: false })).toEqual([]);
+  });
+
   it("spreads extra directories after a single --add-dir", () => {
     expect(claudeArgs({ addDirs: ["C:/a", "C:/b"] })).toEqual(["--add-dir", "C:/a", "C:/b"]);
   });
