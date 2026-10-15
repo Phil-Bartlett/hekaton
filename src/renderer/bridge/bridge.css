@@ -98,6 +98,22 @@
   align-content: start;
 }
 
+.cards__group {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.cards__group:first-child {
+  margin-top: 0;
+}
+
 .cards__empty {
   grid-column: 1 / -1;
   color: var(--fg-muted);

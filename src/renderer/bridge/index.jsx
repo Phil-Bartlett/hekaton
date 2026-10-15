@@ -71,8 +71,15 @@ function ProfileFilter({ state, filter, onChange }) {
 const SORTS = [
   ["manual", "Manual order"],
   ["profile", "By profile"],
+  ["project", "By project"],
   ["recent", "Most recent"],
 ];
+
+// The repository a card works in, by the last segment of its directory.
+function projectOf(card) {
+  const cwd = card.cwd ?? "";
+  return cwd.split(/[\\/]/).filter(Boolean).pop() ?? "—";
+}
 const VIEWS = [
   ["comfortable", "Tiles"],
   ["compact", "Compact tiles"],
@@ -85,6 +92,14 @@ function orderCards(cards, order, sort) {
   const recency = (card) => card.lastSeenAt ?? card.startedAt ?? 0;
   if (sort === "profile") {
     return [...cards].sort((a, b) => a.profileName.localeCompare(b.profileName) || recency(b) - recency(a));
+  }
+  if (sort === "project") {
+    return [...cards].sort(
+      (a, b) =>
+        projectOf(a).localeCompare(projectOf(b)) ||
+        a.profileName.localeCompare(b.profileName) ||
+        recency(b) - recency(a),
+    );
   }
   if (sort === "recent") return [...cards].sort((a, b) => recency(b) - recency(a));
   const rank = new Map(order.map((id, index) => [id, index]));
@@ -131,7 +146,14 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
   const live = showOwn
     ? state.sessions
         .filter((s) => byProfile(s.profile.name))
-        .map((s) => ({ kind: "live", id: s.id, profileName: s.profile.name, startedAt: s.startedAt, session: s }))
+        .map((s) => ({
+          kind: "live",
+          id: s.id,
+          profileName: s.profile.name,
+          cwd: s.profile.cwd,
+          startedAt: s.startedAt,
+          session: s,
+        }))
     : [];
   const dormant = showOwn
     ? state.dormant.filter((d) => byProfile(d.profileName)).map((d) => ({ kind: "dormant", ...d, entry: d }))
@@ -216,31 +238,40 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
           setDropTarget(null);
         }}
       >
-        {cards.map((card) => {
+        {cards.map((card, index) => {
           const drag = { ...dragProps(card.id), className: dragClass(card.id) };
-          return card.kind === "live" ? (
-            <SessionCard
-              key={card.id}
-              session={card.session}
-              now={now}
-              fx={state.fx}
-              appearance={state.settings.statusAppearance}
-              profiles={state.profiles}
-              showNames={showNames}
-              drag={drag}
-            />
-          ) : (
-            <DormantCard
-              key={card.id}
-              entry={card.entry}
-              now={now}
-              fx={state.fx}
-              appearance={state.settings.statusAppearance}
-              profiles={state.profiles}
-              showNames={showNames}
-              drag={drag}
-            />
-          );
+          // In project order, a full-width header opens each new repository.
+          const header =
+            layout.sort === "project" && projectOf(card) !== (index > 0 ? projectOf(cards[index - 1]) : null) ? (
+              <h2 key={`group-${projectOf(card)}`} className="cards__group">
+                {projectOf(card)}
+              </h2>
+            ) : null;
+          const body =
+            card.kind === "live" ? (
+              <SessionCard
+                key={card.id}
+                session={card.session}
+                now={now}
+                fx={state.fx}
+                appearance={state.settings.statusAppearance}
+                profiles={state.profiles}
+                showNames={showNames}
+                drag={drag}
+              />
+            ) : (
+              <DormantCard
+                key={card.id}
+                entry={card.entry}
+                now={now}
+                fx={state.fx}
+                appearance={state.settings.statusAppearance}
+                profiles={state.profiles}
+                showNames={showNames}
+                drag={drag}
+              />
+            );
+          return header ? [header, body] : body;
         })}
         {external.map((session) => (
           <ExternalSessionCard
