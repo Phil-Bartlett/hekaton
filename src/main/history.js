@@ -1,12 +1,11 @@
 import { appendFileSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { app } from "electron";
 
 const MAX_ENTRIES = 200;
 
 // One line per finished session, newest last on disk, newest first when read.
-export function createHistory() {
-  const file = path.join(app.getPath("userData"), "history.jsonl");
+export function createHistory({ dir }) {
+  const file = path.join(dir, "history.jsonl");
 
   function record(entry) {
     appendFileSync(file, `${JSON.stringify(entry)}\n`);

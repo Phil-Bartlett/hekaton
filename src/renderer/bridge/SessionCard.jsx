@@ -139,6 +139,7 @@ export function DormantCard({ entry, now, fx, appearance, profiles, showNames, d
   const { dragClass, handlers } = splitDrag(drag);
   // Still alive somewhere else: resuming would start a second copy.
   const orphan = Boolean(entry.runningPid);
+  const elsewhere = entry.foreignHost ?? null;
   return (
     <article
       className={`card card--dormant${dragClass}`}
@@ -162,7 +163,7 @@ export function DormantCard({ entry, now, fx, appearance, profiles, showNames, d
       )}
       <StateBar
         state={orphan ? "orphan" : "saved"}
-        detail={orphan ? `pid ${entry.runningPid}` : entry.model}
+        detail={orphan ? `pid ${entry.runningPid}` : elsewhere ? `on ${elsewhere}` : entry.model}
         since={entry.lastSeenAt}
         now={now}
         appearance={appearance}
@@ -184,8 +185,14 @@ export function DormantCard({ entry, now, fx, appearance, profiles, showNames, d
           <button
             type="button"
             className="button--primary"
-            disabled={!entry.claudeSessionId}
-            title={entry.claudeSessionId ? "Reopen this conversation where it was" : "No conversation id recorded"}
+            disabled={!entry.claudeSessionId || Boolean(elsewhere)}
+            title={
+              elsewhere
+                ? `Recorded on ${elsewhere}; its transcript lives there`
+                : entry.claudeSessionId
+                  ? "Reopen this conversation where it was"
+                  : "No conversation id recorded"
+            }
             onClick={() => bridge.resumeInstance(entry.id)}
           >
             Resume

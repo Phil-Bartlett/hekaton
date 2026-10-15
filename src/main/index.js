@@ -11,6 +11,7 @@ import { computeBounds } from "./placement.js";
 import { watchRegistry } from "./registry.js";
 import { scanReference } from "./scanner.js";
 import { listConversations } from "./conversations.js";
+import { createDataDir } from "./dataDir.js";
 import { createSessionManager } from "./sessions.js";
 import { attentionFor } from "./state.js";
 import { createStore } from "./store.js";
@@ -39,6 +40,7 @@ const windows = createWindowManager({
   onBridgeBounds: (bounds) => instances?.setBridgeBounds(bounds),
 });
 let sessions = null;
+let dataDir = null;
 let store = null;
 let history = null;
 let instances = null;
@@ -125,7 +127,13 @@ function externalSessions() {
 // it behind, or it was started by hand) must not be resumed on top.
 function annotateOrphans(dormant) {
   const running = new Map(registry.map((row) => [row.sessionId, row.pid]));
-  return dormant.map((entry) => ({ ...entry, runningPid: running.get(entry.claudeSessionId) ?? null }));
+  const host = os.hostname();
+  return dormant.map((entry) => ({
+    ...entry,
+    runningPid: running.get(entry.claudeSessionId) ?? null,
+    // Recorded on another machine through a shared data folder: its transcript is not here.
+    foreignHost: entry.host && entry.host !== host ? entry.host : null,
+  }));
 }
 
 function ownSessionIds() {
@@ -164,6 +172,7 @@ function adoptConversation(sessionId, profileId) {
     bounds: null,
     pinned: false,
     trayOpen: false,
+    host: os.hostname(),
   });
   broadcast();
   return entry;
@@ -177,6 +186,7 @@ function snapshot() {
     usage: usage.current(),
     displays: listDisplays(),
     settings: store.settings(),
+    dataFolder: { path: dataDir.dir, isDefault: dataDir.isDefault },
     profiles: store.profiles(),
     sessions: sessions.list().map((session) => ({ ...session, bounds: windows.sessionBounds(session.id) })),
     dormant: annotateOrphans(instances.dormant()),
@@ -509,7 +519,19 @@ ipcMain.handle(CH.dialogPickFile, async (event) => {
   const result = await dialog.showOpenDialog(windows.bridgeWindow(), { properties: ["openFile"] });
   return result.canceled ? null : result.filePaths[0];
 });
-ipcMain.handle(CH.appOpenDataFolder, (event) => (fromBridge(event) ? shell.openPath(app.getPath("userData")) : null));
+ipcMain.handle(CH.appOpenDataFolder, (event) => (fromBridge(event) ? shell.openPath(dataDir.dir) : null));
+// Every store is bound to a path at start-up, so switching folders restarts
+// the app. The pointer moves after before-quit has flushed the cards, so the
+// seed copy carries them.
+ipcMain.handle(CH.appSetDataFolder, (event, folder) => {
+  if (!fromBridge(event)) return false;
+  const next = typeof folder === "string" && folder ? folder : null;
+  app.once("will-quit", () => dataDir.set(next));
+  quitting = true;
+  app.relaunch();
+  app.quit();
+  return true;
+});
 
 app.on("second-instance", () => windows.createBridgeWindow(instances?.bridgeBounds()));
 
@@ -520,9 +542,10 @@ app.whenReady().then(async () => {
     return sessions.applyStatus(id, payload);
   });
   console.log(`telemetry receiver on 127.0.0.1:${telemetryServer.port}`);
-  store = createStore();
-  history = createHistory();
-  instances = createInstances({ file: path.join(app.getPath("userData"), "state.json") });
+  dataDir = createDataDir();
+  store = createStore({ dir: dataDir.dir });
+  history = createHistory({ dir: dataDir.dir });
+  instances = createInstances({ file: path.join(dataDir.dir, "state.json") });
   fx = createFx();
   usage = createUsage();
   sessions = createSessionManager(onSessionEvent, telemetryServer);

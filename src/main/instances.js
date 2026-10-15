@@ -1,4 +1,5 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 // Every session the Bridge has shown, running or not, so a relaunch of the
@@ -28,6 +29,8 @@ export function summarise(session, { bounds = null, pinned = false, trayOpen = f
     startedAt: session.startedAt,
     lastSeenAt: Date.now(),
     exitCode: session.exitCode,
+    // The data folder may be shared between machines; a conversation resumes only where it was recorded.
+    host: os.hostname(),
     bounds,
     pinned,
     trayOpen,

@@ -166,8 +166,12 @@ function StatusTab({ draft, patch }) {
   );
 }
 
-function PathsTab({ draft, patch }) {
+function PathsTab({ draft, patch, dataFolder }) {
   const { bridge } = window.hekaton;
+  async function changeDataFolder() {
+    const folder = await bridge.pickFolder();
+    if (folder) bridge.setDataFolder(folder);
+  }
   async function browseBinary() {
     const file = await bridge.pickFile();
     if (file) patch({ claudeBinary: file });
@@ -192,6 +196,24 @@ function PathsTab({ draft, patch }) {
           </button>
         </span>
       </label>
+      <div className="field">
+        <span>Data folder (profiles, settings, cards, history)</span>
+        <span className="field__row">
+          <input value={dataFolder?.path ?? ""} readOnly />
+          <button type="button" onClick={changeDataFolder}>
+            Change…
+          </button>
+          {dataFolder && !dataFolder.isDefault && (
+            <button type="button" onClick={() => bridge.setDataFolder(null)}>
+              Use default
+            </button>
+          )}
+        </span>
+        <span className="field__hint">
+          Point this at a OneDrive or Syncthing folder to carry profiles, settings, cards and history between machines.
+          Hekaton restarts to switch. A card recorded on another machine shows its name and resumes only there.
+        </span>
+      </div>
       <div className="field">
         <span>Extra folders to scan for skills, agents and commands</span>
         {draft.referenceRoots.length === 0 && <span className="field__hint">None added.</span>}
@@ -320,7 +342,7 @@ function ThemeTab({ draft, patch }) {
   );
 }
 
-export default function SettingsView({ settings, onClose }) {
+export default function SettingsView({ settings, dataFolder, onClose }) {
   const [tab, setTab] = useState("general");
   const [draft, setDraft] = useState(settings);
   const [hotkeyError, setHotkeyError] = useState(false);
@@ -339,7 +361,7 @@ export default function SettingsView({ settings, onClose }) {
     general: <GeneralTab draft={draft} patch={patch} hotkeyError={hotkeyError} />,
     terminal: <TerminalTab draft={draft} patch={patch} />,
     status: <StatusTab draft={draft} patch={patch} />,
-    paths: <PathsTab draft={draft} patch={patch} />,
+    paths: <PathsTab draft={draft} patch={patch} dataFolder={dataFolder} />,
     theme: <ThemeTab draft={draft} patch={patch} />,
   }[tab];
 

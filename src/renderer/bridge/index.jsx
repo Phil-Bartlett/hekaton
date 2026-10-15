@@ -358,7 +358,7 @@ function App() {
       />
     ),
     profile: <ProfileEditor profile={view.profile} displays={state.displays} onClose={closeView} />,
-    settings: <SettingsView settings={state.settings} onClose={closeView} />,
+    settings: <SettingsView settings={state.settings} dataFolder={state.dataFolder} onClose={closeView} />,
   }[view.name];
 
   return (

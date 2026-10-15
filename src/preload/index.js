@@ -64,6 +64,7 @@ contextBridge.exposeInMainWorld("hekaton", {
     openPath: (file) => ipcRenderer.invoke(CH.referenceOpen, file),
     saveSettings: (patch) => ipcRenderer.invoke(CH.settingsSave, patch),
     openDataFolder: () => ipcRenderer.invoke(CH.appOpenDataFolder),
+    setDataFolder: (folder) => ipcRenderer.invoke(CH.appSetDataFolder, folder),
     pickFolder: () => ipcRenderer.invoke(CH.dialogPickFolder),
     pickFile: () => ipcRenderer.invoke(CH.dialogPickFile),
   },

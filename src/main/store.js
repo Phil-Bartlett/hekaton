@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { app } from "electron";
 
 function readJson(file, fallback) {
   try {
@@ -34,9 +33,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   launchAtLogin: false,
 });
 
-// Launch profiles and app settings, each one JSON file in the user-data folder.
-export function createStore() {
-  const dir = app.getPath("userData");
+// Launch profiles and app settings, each one JSON file in the data folder.
+export function createStore({ dir }) {
   mkdirSync(dir, { recursive: true });
   const profilesFile = path.join(dir, "profiles.json");
   const settingsFile = path.join(dir, "settings.json");
