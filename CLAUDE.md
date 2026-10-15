@@ -41,8 +41,10 @@ state machine), the Bridge (profiles rail, profile editor with monitor / size / 
 live session cards, external sessions, monitor map, history + resume, usage panel, reference browser,
 settings with WCAG-checked themes, Ctrl+K palette), and session-window chrome (accent scope, pin,
 close lock, confirm-close, activity tray, Ctrl+F find). Costs show in pounds with the dollar figure
-on hover. `hekaton --launch=<profile>` opens a profile from the command line. Next: the installer
-(Phase 6d), then the macOS build on Phil's AIstudio box.
+on hover. `hekaton --launch=<profile>` opens a profile from the command line. Installer (Phase 6d) ships as `npm run dist`. Session persistence: `state.json` keeps every card
+(live or SAVED) with its Claude conversation id, window bounds and layout order; Resume reopens the
+same card, Dismiss removes it; cards can be moved between profiles and reordered; tiles, compact
+tiles or list view. Next: the macOS build on Phil's AIstudio box.
 
 Traps:
 
