@@ -1,5 +1,6 @@
 import { app, dialog, globalShortcut, ipcMain, Notification, shell } from "electron";
 import { existsSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import { CH } from "../shared/channels.js";
@@ -9,6 +10,7 @@ import { createInstances, summarise } from "./instances.js";
 import { computeBounds } from "./placement.js";
 import { watchRegistry } from "./registry.js";
 import { scanReference } from "./scanner.js";
+import { listConversations } from "./conversations.js";
 import { createSessionManager } from "./sessions.js";
 import { attentionFor } from "./state.js";
 import { createStore } from "./store.js";
@@ -119,6 +121,54 @@ function externalSessions() {
   return registry.filter((row) => !own.has(row.sessionId));
 }
 
+// A saved card whose conversation is still running somewhere (a crash left
+// it behind, or it was started by hand) must not be resumed on top.
+function annotateOrphans(dormant) {
+  const running = new Map(registry.map((row) => [row.sessionId, row.pid]));
+  return dormant.map((entry) => ({ ...entry, runningPid: running.get(entry.claudeSessionId) ?? null }));
+}
+
+function ownSessionIds() {
+  const ids = new Set();
+  for (const entry of instances.list()) if (entry.claudeSessionId) ids.add(entry.claudeSessionId);
+  for (const session of sessions.list()) {
+    ids.add(session.sessionId);
+    if (session.telemetry.claudeSessionId) ids.add(session.telemetry.claudeSessionId);
+  }
+  return ids;
+}
+
+// Bring a conversation Claude ran on its own onto the Bridge as a saved card.
+function adoptConversation(sessionId, profileId) {
+  const conversation = listConversations({ exclude: new Set() }).find((row) => row.sessionId === sessionId);
+  const profile = store.findProfile(profileId);
+  if (!conversation || !profile) return null;
+  const entry = instances.addDormant({
+    id: randomUUID(),
+    profileId: profile.id,
+    profileName: profile.name,
+    accent: profile.accent ?? null,
+    colorScope: profile.colorScope ?? "border+title",
+    cwd: conversation.cwd ?? profile.cwd,
+    recordedCwd: conversation.cwd ?? profile.cwd,
+    claudeSessionId: conversation.sessionId,
+    transcriptPath: conversation.file,
+    title: conversation.title,
+    model: null,
+    firstPrompt: conversation.firstPrompt,
+    lastPrompt: conversation.firstPrompt,
+    totalCostUsd: 0,
+    startedAt: conversation.modifiedAt,
+    lastSeenAt: conversation.modifiedAt,
+    exitCode: null,
+    bounds: null,
+    pinned: false,
+    trayOpen: false,
+  });
+  broadcast();
+  return entry;
+}
+
 function snapshot() {
   return {
     version: app.getVersion(),
@@ -129,7 +179,7 @@ function snapshot() {
     settings: store.settings(),
     profiles: store.profiles(),
     sessions: sessions.list().map((session) => ({ ...session, bounds: windows.sessionBounds(session.id) })),
-    dormant: instances.dormant(),
+    dormant: annotateOrphans(instances.dormant()),
     order: instances.order(),
     external: externalSessions(),
   };
@@ -396,6 +446,25 @@ ipcMain.handle(CH.instanceMove, (event, id, profileId) => {
   const moved = moveInstance(id, profileId);
   if (moved) broadcast();
   return moved;
+});
+ipcMain.handle(CH.conversationsList, (event) =>
+  fromBridge(event) ? listConversations({ exclude: ownSessionIds() }) : [],
+);
+ipcMain.handle(CH.conversationsAdopt, (event, sessionId, profileId) =>
+  fromBridge(event) ? adoptConversation(sessionId, profileId) : null,
+);
+// End a Claude process that is running a saved card's conversation outside
+// Hekaton, so the card can be resumed here.
+ipcMain.handle(CH.instanceEndOrphan, (event, id) => {
+  if (!fromBridge(event)) return false;
+  const pid = annotateOrphans([instances.get(id)].filter(Boolean))[0]?.runningPid;
+  if (!pid) return false;
+  try {
+    process.kill(pid);
+    return true;
+  } catch {
+    return false;
+  }
 });
 ipcMain.handle(CH.instanceOrder, (event, ids) => {
   if (!fromBridge(event) || !Array.isArray(ids)) return null;

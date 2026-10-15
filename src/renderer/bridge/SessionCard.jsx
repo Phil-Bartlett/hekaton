@@ -137,6 +137,8 @@ export function DormantCard({ entry, now, fx, appearance, profiles, showNames, d
   const { bridge } = window.hekaton;
   const [menuOpen, setMenuOpen] = useState(false);
   const { dragClass, handlers } = splitDrag(drag);
+  // Still alive somewhere else: resuming would start a second copy.
+  const orphan = Boolean(entry.runningPid);
   return (
     <article
       className={`card card--dormant${dragClass}`}
@@ -158,20 +160,37 @@ export function DormantCard({ entry, now, fx, appearance, profiles, showNames, d
           }}
         />
       )}
-      <StateBar state="saved" detail={entry.model} since={entry.lastSeenAt} now={now} appearance={appearance} />
+      <StateBar
+        state={orphan ? "orphan" : "saved"}
+        detail={orphan ? `pid ${entry.runningPid}` : entry.model}
+        since={entry.lastSeenAt}
+        now={now}
+        appearance={appearance}
+      />
       <p className="card__prompt" title={entry.lastPrompt ?? entry.firstPrompt ?? ""}>
         {entry.lastPrompt ?? entry.firstPrompt ?? <em>No prompt recorded</em>}
       </p>
       <div className="card__actions">
-        <button
-          type="button"
-          className="button--primary"
-          disabled={!entry.claudeSessionId}
-          title={entry.claudeSessionId ? "Reopen this conversation where it was" : "No conversation id recorded"}
-          onClick={() => bridge.resumeInstance(entry.id)}
-        >
-          Resume
-        </button>
+        {orphan ? (
+          <button
+            type="button"
+            className="button--primary"
+            title="This conversation is still running outside Hekaton; end that copy before resuming it here"
+            onClick={() => bridge.endOrphan(entry.id)}
+          >
+            End outside copy
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="button--primary"
+            disabled={!entry.claudeSessionId}
+            title={entry.claudeSessionId ? "Reopen this conversation where it was" : "No conversation id recorded"}
+            onClick={() => bridge.resumeInstance(entry.id)}
+          >
+            Resume
+          </button>
+        )}
         <button type="button" className="button--danger" onClick={() => bridge.dismissInstance(entry.id)}>
           Dismiss
         </button>

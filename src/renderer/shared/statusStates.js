@@ -11,6 +11,7 @@ export const STATUS_STATES = Object.freeze({
   failed: { label: "FAILED", color: "#ef4444" },
   exited: { label: "EXITED", color: "#374151" },
   saved: { label: "SAVED", color: "#4b5563" },
+  orphan: { label: "RUNNING OUTSIDE", color: "#b45309" },
 });
 
 export function statusAppearance(state, overrides = {}) {

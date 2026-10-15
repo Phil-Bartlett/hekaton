@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import CommandPalette from "./CommandPalette.jsx";
+import AdoptDialog from "./AdoptDialog.jsx";
 import HistoryDialog from "./HistoryDialog.jsx";
 import MonitorMap from "./MonitorMap.jsx";
 import ProfileEditor from "./ProfileEditor.jsx";
@@ -275,6 +276,24 @@ function HistoryIcon() {
   );
 }
 
+// A card with a plus: bring a conversation onto the Bridge.
+function AdoptIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      aria-hidden="true"
+    >
+      <rect x="2" y="3" width="12" height="10" rx="1.5" />
+      <path d="M8 6v4M6 8h4" />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg
@@ -300,6 +319,7 @@ function App() {
   const now = useNow(5000);
   const [view, setView] = useState({ name: "dashboard" });
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [adoptOpen, setAdoptOpen] = useState(false);
   const [referenceKind, setReferenceKind] = useState(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [chrome, setChrome] = useState({ maximized: false });
@@ -358,6 +378,15 @@ function App() {
           <button
             type="button"
             className="title-bar__control"
+            title="Adopt a conversation Claude ran outside Hekaton"
+            aria-label="Adopt a conversation"
+            onClick={() => setAdoptOpen(true)}
+          >
+            <AdoptIcon />
+          </button>
+          <button
+            type="button"
+            className="title-bar__control"
             title="Settings"
             aria-label="Settings"
             aria-pressed={view.name === "settings"}
@@ -387,6 +416,7 @@ function App() {
       </footer>
       {paletteOpen && <CommandPalette state={state} onClose={() => setPaletteOpen(false)} />}
       {historyOpen && <HistoryDialog fx={state.fx} onClose={() => setHistoryOpen(false)} />}
+      {adoptOpen && <AdoptDialog profiles={state.profiles} onClose={() => setAdoptOpen(false)} />}
       {referenceKind && (
         <ReferenceDialog initialKind={referenceKind} settings={state.settings} onClose={() => setReferenceKind(null)} />
       )}

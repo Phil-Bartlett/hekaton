@@ -82,6 +82,13 @@ export function createInstances({ file }) {
     save();
   }
 
+  // A card for a conversation Hekaton never ran: starts dormant.
+  function addDormant(entry) {
+    entries.set(entry.id, { ...entry, live: false, lastSeenAt: entry.lastSeenAt ?? Date.now() });
+    save();
+    return entries.get(entry.id);
+  }
+
   function markDormant(id, patch = {}) {
     const entry = entries.get(id);
     if (!entry) return;
@@ -132,6 +139,7 @@ export function createInstances({ file }) {
 
   return {
     record,
+    addDormant,
     markDormant,
     dismiss,
     move,
