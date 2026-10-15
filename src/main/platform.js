@@ -1,5 +1,5 @@
 import { app } from "electron";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -12,6 +12,37 @@ export const IS_LINUX = process.platform === "linux";
 export function resourcePath(...segments) {
   const base = app.isPackaged ? process.resourcesPath : path.join(__dirname, "..");
   return path.join(base, ...segments);
+}
+
+// The app icon: shipped next to the resources once packaged, under build/ in
+// development.
+export function iconPath() {
+  return app.isPackaged ? resourcePath("icon.png") : resourcePath("build", "icon.png");
+}
+
+// Start with the user's session. Electron covers Windows and macOS; Linux
+// desktops read an XDG autostart entry instead.
+export function setLaunchAtLogin(enabled) {
+  if (IS_LINUX) {
+    const dir = path.join(os.homedir(), ".config", "autostart");
+    const file = path.join(dir, "hekaton.desktop");
+    if (!enabled) {
+      try {
+        unlinkSync(file);
+      } catch {
+        // Nothing to remove.
+      }
+      return;
+    }
+    mkdirSync(dir, { recursive: true });
+    const exec = process.env.APPIMAGE ?? process.execPath;
+    writeFileSync(
+      file,
+      `[Desktop Entry]\nType=Application\nName=Hekaton\nExec="${exec}" --hidden\nX-GNOME-Autostart-enabled=true\n`,
+    );
+    return;
+  }
+  app.setLoginItemSettings({ openAtLogin: enabled, args: ["--hidden"] });
 }
 
 // The native installer puts the binary in ~/.local/bin on every platform;

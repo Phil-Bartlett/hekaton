@@ -64,6 +64,38 @@ function GeneralTab({ draft, patch, hotkeyError }) {
           />{" "}
           Show Claude&apos;s own session name on cards and title bars
         </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={draft.notifyApproval !== false}
+            onChange={(event) => patch({ notifyApproval: event.target.checked })}
+          />{" "}
+          Notify when a session is waiting for an approval
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={draft.notifyFinished !== false}
+            onChange={(event) => patch({ notifyFinished: event.target.checked })}
+          />{" "}
+          Notify when a session finishes a turn
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={draft.keepInTray !== false}
+            onChange={(event) => patch({ keepInTray: event.target.checked })}
+          />{" "}
+          Keep running in the tray when every window is closed
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={draft.launchAtLogin === true}
+            onChange={(event) => patch({ launchAtLogin: event.target.checked })}
+          />{" "}
+          Start Hekaton when I sign in (hidden in the tray)
+        </label>
       </span>
     </label>
   );

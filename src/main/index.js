@@ -1,4 +1,4 @@
-import { app, dialog, globalShortcut, ipcMain, shell } from "electron";
+import { app, dialog, globalShortcut, ipcMain, Notification, shell } from "electron";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -10,9 +10,12 @@ import { computeBounds } from "./placement.js";
 import { watchRegistry } from "./registry.js";
 import { scanReference } from "./scanner.js";
 import { createSessionManager } from "./sessions.js";
+import { attentionFor } from "./state.js";
 import { createStore } from "./store.js";
 import { startTelemetryServer } from "./telemetry.js";
+import { createTray } from "./tray.js";
 import { createUsage } from "./usage.js";
+import { iconPath, setLaunchAtLogin } from "./platform.js";
 import { boundsOnScreen, createWindowManager, listDisplays } from "./windows.js";
 
 // xterm's ConPTY quirk handling is keyed on the Windows build number.
@@ -39,8 +42,55 @@ let history = null;
 let instances = null;
 let fx = null;
 let usage = null;
+let tray = null;
+let quitting = false;
 let registry = [];
 const recorded = new Set();
+const lastState = new Map();
+
+// Interrupt only for what matters, and only when the window is not in front.
+function notifyIfNeeded(session) {
+  const { id, profile, telemetry } = session;
+  const kind = attentionFor(lastState.get(id), telemetry.state);
+  lastState.set(id, telemetry.state);
+  if (!kind || windows.isSessionFocused(id)) return;
+  const settings = store.settings();
+  if (kind === "approval" && !settings.notifyApproval) return;
+  if (kind === "finished" && !settings.notifyFinished) return;
+  windows.flashSession(id);
+  if (!Notification.isSupported()) return;
+  const name =
+    telemetry.sessionName && telemetry.sessionName !== profile.name
+      ? `${profile.name} · ${telemetry.sessionName}`
+      : profile.name;
+  const notification = new Notification({
+    title: kind === "approval" ? `${name} needs an approval` : `${name} has finished`,
+    body: telemetry.lastPrompt ?? "",
+    silent: true,
+  });
+  notification.on("click", () => windows.focusSession(id));
+  notification.show();
+}
+
+function showBridge() {
+  windows.createBridgeWindow(instances?.bridgeBounds());
+}
+
+function applyTray(enabled) {
+  if (enabled && !tray) {
+    tray = createTray({
+      iconPath: iconPath(),
+      onShowBridge: showBridge,
+      onQuit: () => {
+        quitting = true;
+        app.quit();
+      },
+    });
+  } else if (!enabled && tray) {
+    tray.destroy();
+    tray = null;
+  }
+}
 
 // The Bridge keeps a card for every session it has launched, running or not;
 // the live ones are refreshed on every change so a relaunch can bring them
@@ -132,6 +182,7 @@ function onSessionEvent(event, id, payload) {
       id,
       name && name !== payload.profile.name ? `${payload.profile.name} · ${name}` : payload.profile.name,
     );
+    notifyIfNeeded(payload);
     recordInstance(id);
     broadcast();
   }
@@ -148,6 +199,7 @@ function forgetSession(id) {
   }
   sessions.remove(id);
   recorded.delete(id);
+  lastState.delete(id);
 }
 
 // The global hotkey raises the Bridge from anywhere; an invalid accelerator
@@ -363,6 +415,8 @@ ipcMain.handle(CH.settingsSave, (event, patch) => {
   if (!fromBridge(event) || !patch || typeof patch !== "object") return null;
   const saved = store.saveSettings(patch);
   const hotkeyOk = "hotkey" in patch ? applyHotkey(saved.hotkey) : true;
+  if ("keepInTray" in patch) applyTray(saved.keepInTray);
+  if ("launchAtLogin" in patch) setLaunchAtLogin(saved.launchAtLogin);
   broadcast();
   // Session windows restyle live: fonts, status colours and theme all come from here.
   for (const session of sessions.list()) {
@@ -402,7 +456,9 @@ app.whenReady().then(async () => {
     registry = rows;
     broadcast();
   });
-  windows.createBridgeWindow(instances.bridgeBounds());
+  applyTray(store.settings().keepInTray);
+  // `--hidden` (the launch-at-login argument) starts in the tray only.
+  if (!(process.argv.includes("--hidden") && tray)) showBridge();
   applyHotkey(store.settings().hotkey);
 
   // `hekaton --launch=<profile name or id>` opens a session straight away.
@@ -414,7 +470,10 @@ app.whenReady().then(async () => {
   }
 });
 
-app.on("window-all-closed", () => app.quit());
+// With a tray the app lives on after its last window; without one it ends.
+app.on("window-all-closed", () => {
+  if (!tray || quitting) app.quit();
+});
 app.on("will-quit", () => globalShortcut.unregisterAll());
 app.on("session-end", flushForQuit);
 app.on("before-quit", () => {

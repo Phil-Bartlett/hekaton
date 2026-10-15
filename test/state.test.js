@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyExit, applyHook, applyStatus, initialTelemetry, STATES } from "../src/main/state.js";
+import { applyExit, applyHook, applyStatus, attentionFor, initialTelemetry, STATES } from "../src/main/state.js";
 
 const hook = (name, extra = {}) => ({
   hook_event_name: name,
@@ -98,5 +98,16 @@ describe("applyExit", () => {
   it("maps exit codes to exited or failed", () => {
     expect(applyExit(initialTelemetry(0), 0).state).toBe(STATES.exited);
     expect(applyExit(initialTelemetry(0), 1).state).toBe(STATES.failed);
+  });
+});
+
+describe("attentionFor", () => {
+  it("flags approval requests and finished turns only", () => {
+    expect(attentionFor(STATES.running, STATES.awaitingApproval)).toBe("approval");
+    expect(attentionFor(STATES.running, STATES.idle)).toBe("finished");
+    expect(attentionFor(STATES.compacting, STATES.idle)).toBe("finished");
+    expect(attentionFor(STATES.launching, STATES.idle)).toBeNull();
+    expect(attentionFor(STATES.idle, STATES.running)).toBeNull();
+    expect(attentionFor(STATES.idle, STATES.idle)).toBeNull();
   });
 });

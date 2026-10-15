@@ -276,6 +276,18 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     sessionWindow(id)?.destroy();
   }
 
+  function isSessionFocused(id) {
+    return sessionWindow(id)?.isFocused() === true;
+  }
+
+  // Taskbar flash until the window is next focused.
+  function flashSession(id) {
+    const win = sessionWindow(id);
+    if (!win || win.isFocused()) return;
+    win.flashFrame(true);
+    win.once("focus", () => win.flashFrame(false));
+  }
+
   function pinSession(id, pinned) {
     const win = sessionWindow(id);
     if (!win) return;
@@ -316,6 +328,8 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     centerSession,
     bringSessionHere,
     closeSessionWindow,
+    isSessionFocused,
+    flashSession,
     pinSession,
     lockSession,
     controlWindow,

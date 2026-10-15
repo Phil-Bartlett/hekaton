@@ -28,6 +28,10 @@ export const DEFAULT_SETTINGS = Object.freeze({
   claudeBinary: "",
   showSessionNames: true,
   layout: { sort: "manual", density: "comfortable" },
+  notifyApproval: true,
+  notifyFinished: true,
+  keepInTray: true,
+  launchAtLogin: false,
 });
 
 // Launch profiles and app settings, each one JSON file in the user-data folder.

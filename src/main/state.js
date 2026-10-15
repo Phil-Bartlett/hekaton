@@ -101,6 +101,15 @@ export function applyStatus(telemetry, payload) {
   };
 }
 
+// The two transitions worth interrupting someone for: Claude stopped to ask
+// for a permission, or a turn finished. Anything else is noise.
+export function attentionFor(previous, next) {
+  if (previous === next) return null;
+  if (next === STATES.awaitingApproval) return "approval";
+  if (next === STATES.idle && (previous === STATES.running || previous === STATES.compacting)) return "finished";
+  return null;
+}
+
 export function applyExit(telemetry, exitCode, at = Date.now()) {
   return transition(telemetry, exitCode === 0 ? STATES.exited : STATES.failed, at, { currentTool: null });
 }
