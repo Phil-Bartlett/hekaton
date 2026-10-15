@@ -74,6 +74,9 @@ export function deriveVariables(theme) {
     "--fg": theme.fg,
     "--fg-muted": theme.fgMuted,
     "--ui-accent": theme.accent,
+    // Semantic text colours that read on either a light or a dark base.
+    "--ok": light ? "#15803d" : "#4ade80",
+    "--danger": light ? "#b91c1c" : "#f87171",
   };
 }
 

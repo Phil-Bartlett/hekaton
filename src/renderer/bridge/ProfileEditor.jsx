@@ -97,6 +97,7 @@ export default function ProfileEditor({ profile, displays, onClose }) {
     alwaysOnTop: false,
     confirmClose: false,
     skipPermissions: false,
+    addDirs: [],
     ...profile,
   });
   const [error, setError] = useState(null);
@@ -157,6 +158,23 @@ export default function ProfileEditor({ profile, displays, onClose }) {
                 Browse…
               </button>
             </span>
+          </label>
+          <label className="field">
+            <span>Extra directories Claude may read and edit</span>
+            <textarea
+              rows={2}
+              value={(form.addDirs ?? []).join("\n")}
+              onChange={(event) =>
+                patch({
+                  addDirs: event.target.value
+                    .split(/\r?\n/)
+                    .map((line) => line.trim())
+                    .filter(Boolean),
+                })
+              }
+              placeholder="One folder per line (--add-dir)"
+              spellCheck={false}
+            />
           </label>
           <label className="field">
             <span>Preferred Model</span>

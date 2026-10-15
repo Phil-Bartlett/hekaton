@@ -23,6 +23,9 @@ contextBridge.exposeInMainWorld("hekaton", {
     onUpdate: (callback) => subscribe(CH.sessionUpdate, callback),
     onActivity: (callback) => subscribe(CH.sessionActivity, callback),
   },
+  link: {
+    open: (url) => ipcRenderer.send(CH.linkOpen, url),
+  },
   window: {
     pin: (pinned) => ipcRenderer.send(CH.windowPin, instanceId, pinned),
     closeLock: (locked) => ipcRenderer.send(CH.windowCloseLock, instanceId, locked),

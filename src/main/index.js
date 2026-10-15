@@ -342,6 +342,11 @@ ipcMain.on(CH.windowCloseLock, (event, id, locked) => {
   if (ownsInstance(event, id)) windows.lockSession(id, locked === true);
 });
 ipcMain.on(CH.windowControl, (event, action) => windows.controlWindow(event.sender, action));
+// Links clicked in a terminal open in the default browser; only web and mail
+// schemes are allowed through.
+ipcMain.on(CH.linkOpen, (event, url) => {
+  if (typeof url === "string" && /^(https?|mailto):/i.test(url)) shell.openExternal(url);
+});
 ipcMain.on(CH.windowTray, (event, id, open) => {
   if (ownsInstance(event, id)) sessions.setTray(id, open === true);
 });

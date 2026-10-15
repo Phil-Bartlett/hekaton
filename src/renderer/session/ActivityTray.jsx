@@ -38,7 +38,13 @@ function Turn({ turn, fx }) {
         </div>
         <div className="turn__chips">
           <span className="chip chip--time">{formatDuration(turn.durationMs)}</span>
-          <Money usd={turn.costUsd} fx={fx} className="chip chip--cost" />
+          {turn.unpriced ? (
+            <span className="chip chip--cost" title="This model is not in the price table yet">
+              n/a
+            </span>
+          ) : (
+            <Money usd={turn.costUsd} fx={fx} className="chip chip--cost" />
+          )}
         </div>
       </div>
     </article>

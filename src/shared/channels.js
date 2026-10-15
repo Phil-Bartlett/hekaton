@@ -9,6 +9,7 @@ export const CH = Object.freeze({
   windowCloseLock: "window:close-lock",
   windowControl: "window:control",
   windowTray: "window:tray",
+  linkOpen: "link:open",
   windowChrome: "window:chrome",
   ptyAttach: "pty:attach",
   ptyWrite: "pty:write",

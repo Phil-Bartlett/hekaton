@@ -13,6 +13,8 @@
   --tray: #141414;
   --fg: #d4d4d4;
   --fg-muted: #929292;
+  --ok: #4ade80;
+  --danger: #f87171;
   --accent: #3b82f6;
   --title-bar-height: 36px;
   color-scheme: dark;

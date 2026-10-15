@@ -86,6 +86,15 @@ describe("createTurnBuilder", () => {
     expect(turn.tools[0]).toMatchObject({ name: "Read", summary: "C:/x", durationMs: 1000, error: true });
   });
 
+  it("marks a turn unpriced when the model is unknown", () => {
+    const builder = createTurnBuilder();
+    builder.push(user(0, "go"));
+    const record = assistant(1, "msg_1", { type: "text", text: "ok" });
+    record.message.model = "claude-mystery-9";
+    builder.push(record);
+    expect(builder.turns()[0]).toMatchObject({ unpriced: true, costUsd: 0 });
+  });
+
   it("keeps only the most recent fifty turns", () => {
     const builder = createTurnBuilder();
     for (let i = 0; i < 60; i += 1) builder.push(user(i, `prompt ${i}`));

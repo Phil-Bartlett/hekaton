@@ -170,13 +170,13 @@
 }
 
 .chip--time {
-  background: #1e3a5f;
-  color: #93c5fd;
+  background: color-mix(in srgb, #3b82f6 22%, var(--bg-elevated));
+  color: var(--fg);
 }
 
 .chip--cost {
-  background: #14532d;
-  color: #86efac;
+  background: color-mix(in srgb, #22c55e 22%, var(--bg-elevated));
+  color: var(--fg);
 }
 
 /* ---- Find bar (Ctrl/Cmd+F or +K) ---------------------------------------- */

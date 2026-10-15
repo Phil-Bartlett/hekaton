@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
+import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
 
@@ -53,6 +54,7 @@ export default function Terminal({ theme, fontFamily, fontSize, platform, osBuil
     term.loadAddon(fit);
     const search = new SearchAddon();
     term.loadAddon(search);
+    term.loadAddon(new WebLinksAddon((event, url) => window.hekaton.link.open(url)));
     if (searchRef) {
       const options = (extra) => ({
         caseSensitive: false,

@@ -49,7 +49,7 @@ export function createTurnBuilder() {
   const current = () => turns[turns.length - 1];
 
   function startTurn(at, prompt) {
-    turns.push({ at, prompt, model: null, tools: [], usage: emptyUsage(), costUsd: 0, durationMs: 0 });
+    turns.push({ at, prompt, model: null, tools: [], usage: emptyUsage(), costUsd: 0, unpriced: false, durationMs: 0 });
     if (turns.length > MAX_TURNS) turns.shift();
   }
 
@@ -96,7 +96,9 @@ export function createTurnBuilder() {
     turn.usage.output += usage.output_tokens ?? 0;
     turn.usage.cacheRead += usage.cache_read_input_tokens ?? 0;
     turn.usage.cacheWrite += usage.cache_creation_input_tokens ?? 0;
-    turn.costUsd += costOf(message.model, usage) ?? 0;
+    const cost = costOf(message.model, usage);
+    if (cost === null) turn.unpriced = true;
+    else turn.costUsd += cost;
   }
 
   function push(record) {
