@@ -41,10 +41,31 @@ export function listDisplays() {
 }
 
 const BOUNDS_THROTTLE_MS = 100;
+const MIN_VISIBLE_PX = 120;
 
-// `onSessionBounds(id)` fires, throttled, whenever a session window moves or
-// resizes, so the Bridge's monitor map can follow it.
-export function createWindowManager({ onSessionBounds }) {
+// Saved bounds are only trusted when a decent slice of the window would
+// still land on a connected display; a monitor may have gone since.
+export function boundsOnScreen(bounds) {
+  if (!bounds || !Number.isFinite(bounds.x) || !Number.isFinite(bounds.width)) return null;
+  const visible = screen.getAllDisplays().some(({ workArea }) => {
+    const w = Math.min(bounds.x + bounds.width, workArea.x + workArea.width) - Math.max(bounds.x, workArea.x);
+    const h = Math.min(bounds.y + bounds.height, workArea.y + workArea.height) - Math.max(bounds.y, workArea.y);
+    return w >= MIN_VISIBLE_PX && h >= MIN_VISIBLE_PX;
+  });
+  return visible ? bounds : null;
+}
+
+function throttled(fn) {
+  let timer = null;
+  return () => {
+    clearTimeout(timer);
+    timer = setTimeout(fn, BOUNDS_THROTTLE_MS);
+  };
+}
+
+// `onSessionBounds(id)` and `onBridgeBounds(bounds)` fire, throttled, whenever
+// a window moves or resizes, so the monitor map follows and the layout is saved.
+export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
   const sessionWindows = new Map();
   // Title-bar state the renderer draws, keyed by BrowserWindow id: the
   // maximise toggle for every window, always-on-top and the close lock for
@@ -72,14 +93,13 @@ export function createWindowManager({ onSessionBounds }) {
     win.on("closed", () => chromeState.delete(win.id));
   }
 
-  function createBridgeWindow() {
+  function createBridgeWindow(savedBounds) {
     if (bridge && !bridge.isDestroyed()) {
       showBridge();
       return bridge;
     }
     bridge = new BrowserWindow({
-      width: 1180,
-      height: 830,
+      ...(boundsOnScreen(savedBounds) ?? { width: 1180, height: 830 }),
       minWidth: 720,
       minHeight: 480,
       backgroundColor: BACKGROUND,
@@ -91,6 +111,11 @@ export function createWindowManager({ onSessionBounds }) {
     bridge.on("closed", () => {
       bridge = null;
     });
+    const bridgeMoved = throttled(() => {
+      if (bridge && !bridge.isDestroyed() && !bridge.isMinimized()) onBridgeBounds(bridge.getBounds());
+    });
+    bridge.on("move", bridgeMoved);
+    bridge.on("resize", bridgeMoved);
     trackChrome(bridge);
     forwardConsole(bridge, "bridge");
     bridge.loadFile(path.join(RENDERER_DIR, "bridge", "index.html"));
@@ -105,17 +130,14 @@ export function createWindowManager({ onSessionBounds }) {
   }
 
   function trackBounds(win, id) {
-    let timer = null;
-    const changed = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => onSessionBounds(id), BOUNDS_THROTTLE_MS);
-    };
+    const changed = throttled(() => {
+      if (!win.isDestroyed() && !win.isMinimized()) onSessionBounds(id);
+    });
     win.on("move", changed);
     win.on("resize", changed);
-    win.on("closed", () => clearTimeout(timer));
   }
 
-  function createSessionWindow(session, bounds) {
+  function createSessionWindow(session, bounds, { pinned = false } = {}) {
     const win = new BrowserWindow({
       ...bounds,
       minWidth: 480,
@@ -151,7 +173,7 @@ export function createWindowManager({ onSessionBounds }) {
     });
     trackChrome(win);
     trackBounds(win, session.id);
-    if (session.profile.alwaysOnTop) {
+    if (session.profile.alwaysOnTop || pinned) {
       win.setAlwaysOnTop(true);
       chromeFor(win).pinned = true;
     }
@@ -161,7 +183,13 @@ export function createWindowManager({ onSessionBounds }) {
   }
 
   function sessionBounds(id) {
-    return sessionWindow(id)?.getBounds() ?? null;
+    const win = sessionWindow(id);
+    return win && !win.isMinimized() ? win.getBounds() : null;
+  }
+
+  function sessionChrome(id) {
+    const win = sessionWindow(id);
+    return win ? chromeFor(win) : null;
   }
 
   function moveSession(id, x, y) {
@@ -272,6 +300,7 @@ export function createWindowManager({ onSessionBounds }) {
     createSessionWindow,
     sessionWindow,
     sessionBounds,
+    sessionChrome,
     moveSession,
     sendToSession,
     sendToBridge,

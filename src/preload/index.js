@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld("hekaton", {
     pin: (pinned) => ipcRenderer.send(CH.windowPin, instanceId, pinned),
     closeLock: (locked) => ipcRenderer.send(CH.windowCloseLock, instanceId, locked),
     control: (action) => ipcRenderer.send(CH.windowControl, action),
+    tray: (open) => ipcRenderer.send(CH.windowTray, instanceId, open),
     onChrome: (callback) => subscribe(CH.windowChrome, callback),
   },
   pty: {
@@ -47,6 +48,8 @@ contextBridge.exposeInMainWorld("hekaton", {
     bringHere: (id) => ipcRenderer.send(CH.sessionBringHere, id),
     terminate: (id) => ipcRenderer.send(CH.sessionTerminate, id),
     moveTo: (id, x, y) => ipcRenderer.send(CH.sessionMoveTo, id, x, y),
+    resumeInstance: (id) => ipcRenderer.invoke(CH.instanceResume, id),
+    dismissInstance: (id) => ipcRenderer.invoke(CH.instanceDismiss, id),
     history: () => ipcRenderer.invoke(CH.historyList),
     resume: (entry) => ipcRenderer.invoke(CH.historyResume, entry),
     reference: () => ipcRenderer.invoke(CH.referenceList),

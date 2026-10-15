@@ -31,7 +31,7 @@ export default function App() {
     hekaton.session.get().then((initial) => {
       setSession(initial);
       setActivity(initial.activity ?? []);
-      setTrayOpen(initial.profile.openTray === true);
+      setTrayOpen(initial.trayOpen === true);
     });
     const unsubscribe = [
       hekaton.session.onUpdate((next) => setSession((current) => ({ ...current, ...next }))),
@@ -63,7 +63,12 @@ export default function App() {
         session={session}
         chrome={chrome}
         trayOpen={trayOpen}
-        onToggleTray={() => setTrayOpen((open) => !open)}
+        onToggleTray={() =>
+          setTrayOpen((open) => {
+            window.hekaton.window.tray(!open);
+            return !open;
+          })
+        }
         onTogglePin={() => window.hekaton.window.pin(!chrome.pinned)}
         onToggleLock={() => window.hekaton.window.closeLock(!chrome.locked)}
       />

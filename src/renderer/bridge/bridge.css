@@ -1023,3 +1023,64 @@
   font-size: 11px;
   border-top: 1px solid var(--border);
 }
+
+/* ---- Profile filter ------------------------------------------------------ */
+
+.filter {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 16px 0;
+}
+
+.filter__option {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--control);
+  color: var(--fg-muted);
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter__option:hover {
+  background: var(--control-hover);
+  color: var(--fg);
+}
+
+.filter__option.is-active {
+  background: #166534;
+  border-color: #22c55e;
+  color: #fff;
+}
+
+.filter__count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+/* ---- Dormant (saved) cards ---------------------------------------------- */
+
+.card--dormant {
+  opacity: 0.8;
+  border-left-style: dashed;
+}
+
+.card--dormant:hover {
+  opacity: 1;
+}
+
+.card__title {
+  font-weight: 400;
+  color: var(--fg-muted);
+}
+
+.card--dormant .card__actions .button--primary {
+  border-color: #22c55e;
+  color: #4ade80;
+}

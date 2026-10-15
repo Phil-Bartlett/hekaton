@@ -6,7 +6,7 @@ import MonitorMap from "./MonitorMap.jsx";
 import ProfileEditor from "./ProfileEditor.jsx";
 import ProfilesRail from "./ProfilesRail.jsx";
 import ReferenceDialog from "./ReferenceDialog.jsx";
-import SessionCard, { ExternalSessionCard } from "./SessionCard.jsx";
+import SessionCard, { DormantCard, ExternalSessionCard } from "./SessionCard.jsx";
 import SettingsView from "./SettingsView.jsx";
 import UsagePanel from "./UsagePanel.jsx";
 import CaptionButtons from "../shared/CaptionButtons.jsx";
@@ -34,10 +34,50 @@ function useNow(intervalMs = 1000) {
   return now;
 }
 
+const EXTERNAL_FILTER = "__external__";
+
+// Filter row above the cards: every profile that has a card, plus sessions
+// running outside Hekaton. Counts cover live and saved cards.
+function ProfileFilter({ state, filter, onChange }) {
+  const counts = new Map();
+  for (const card of [...state.sessions.map((s) => s.profile), ...state.dormant]) {
+    const name = card.profileName ?? card.name;
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  const names = [...new Set([...state.profiles.map((p) => p.name), ...counts.keys()])];
+  const total = state.sessions.length + state.dormant.length;
+  const option = (value, label, count) => (
+    <button
+      key={value}
+      type="button"
+      className={`filter__option${filter === value ? " is-active" : ""}`}
+      aria-pressed={filter === value}
+      onClick={() => onChange(value)}
+    >
+      {label}
+      <span className="filter__count">{count}</span>
+    </button>
+  );
+  return (
+    <nav className="filter" aria-label="Filter sessions">
+      {option("all", "All", total)}
+      {names.map((name) => option(name, name, counts.get(name) ?? 0))}
+      {option(EXTERNAL_FILTER, "Outside Hekaton", state.external.length)}
+    </nav>
+  );
+}
+
 function Dashboard({ state, onEditProfile, onNewProfile }) {
   const now = useNow();
+  const [filter, setFilter] = useState("all");
   const { bridge } = window.hekaton;
-  const empty = state.sessions.length === 0 && state.external.length === 0;
+  const showOwn = filter !== EXTERNAL_FILTER;
+  const showExternal = filter === "all" || filter === EXTERNAL_FILTER;
+  const byProfile = (name) => filter === "all" || filter === name;
+  const live = showOwn ? state.sessions.filter((s) => byProfile(s.profile.name)) : [];
+  const dormant = showOwn ? state.dormant.filter((d) => byProfile(d.profileName)) : [];
+  const external = showExternal ? state.external : [];
+  const empty = live.length === 0 && dormant.length === 0 && external.length === 0;
   return (
     <>
       <ProfilesRail
@@ -46,8 +86,9 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
         onEdit={onEditProfile}
         onNew={onNewProfile}
       />
+      <ProfileFilter state={state} filter={filter} onChange={setFilter} />
       <section className="cards">
-        {state.sessions.map((session) => (
+        {live.map((session) => (
           <SessionCard
             key={session.id}
             session={session}
@@ -56,7 +97,16 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
             appearance={state.settings.statusAppearance}
           />
         ))}
-        {state.external.map((session) => (
+        {dormant.map((entry) => (
+          <DormantCard
+            key={entry.id}
+            entry={entry}
+            now={now}
+            fx={state.fx}
+            appearance={state.settings.statusAppearance}
+          />
+        ))}
+        {external.map((session) => (
           <ExternalSessionCard
             key={session.sessionId}
             session={session}

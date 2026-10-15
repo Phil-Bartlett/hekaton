@@ -21,6 +21,7 @@ export function initialTelemetry(at = Date.now()) {
     firstPrompt: null,
     lastPrompt: null,
     claudeSessionId: null,
+    sessionName: null,
     transcriptPath: null,
     model: null,
     costUsd: 0,
@@ -89,6 +90,7 @@ export function applyStatus(telemetry, payload) {
   return {
     ...telemetry,
     claudeSessionId: sessionId,
+    sessionName: payload.session_name ?? telemetry.sessionName,
     transcriptPath: payload.transcript_path ?? telemetry.transcriptPath,
     model: payload.model ? { id: payload.model.id, name: payload.model.display_name } : telemetry.model,
     costUsd,

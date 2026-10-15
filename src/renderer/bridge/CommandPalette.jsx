@@ -35,6 +35,18 @@ function buildIndex(state) {
       });
     }
   }
+  for (const entry of state.dormant) {
+    items.push({
+      key: `saved:${entry.id}`,
+      kind: "Saved",
+      title:
+        entry.title && entry.title !== entry.profileName ? `${entry.profileName} · ${entry.title}` : entry.profileName,
+      detail: entry.lastPrompt ?? entry.firstPrompt ?? entry.cwd,
+      accent: entry.accent ?? DEFAULT_ACCENT,
+      text: [entry.profileName, entry.title, entry.cwd, entry.firstPrompt, entry.lastPrompt].filter(Boolean).join("\n"),
+      run: entry.claudeSessionId ? () => window.hekaton.bridge.resumeInstance(entry.id) : null,
+    });
+  }
   for (const external of state.external) {
     items.push({
       key: `external:${external.sessionId}`,

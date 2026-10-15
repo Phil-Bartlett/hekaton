@@ -66,8 +66,9 @@ export function createSessionManager(emit, telemetryServer) {
     emit("update", session.id, publicView(session));
   }
 
-  function launch(profile, { binary } = {}) {
-    const id = randomUUID();
+  // `id` lets a resumed session keep the card identity it had before.
+  function launch(profile, { binary, id: givenId, trayOpen } = {}) {
+    const id = givenId ?? randomUUID();
     const sessionId = profile.resume ? profile.resume : randomUUID();
     const settingsPath = writeSettings(id);
     const term = pty.spawn(claudeBinary(binary), claudeArgs({ ...profile, sessionId, settingsPath }), {
@@ -89,6 +90,7 @@ export function createSessionManager(emit, telemetryServer) {
       startedAt: Date.now(),
       exitCode: null,
       telemetry: initialTelemetry(),
+      trayOpen: trayOpen ?? profile.openTray === true,
       activity: [],
       transcriptPath: null,
       settingsPath,
@@ -142,6 +144,13 @@ export function createSessionManager(emit, telemetryServer) {
     return true;
   }
 
+  function setTray(id, open) {
+    const session = sessions.get(id);
+    if (!session) return;
+    session.trayOpen = open;
+    emit("update", id, publicView(session));
+  }
+
   // Returns everything drawn so far and switches the session to live streaming.
   function attach(id) {
     const session = sessions.get(id);
@@ -179,6 +188,7 @@ export function createSessionManager(emit, telemetryServer) {
     launch,
     applyHook: applyHookPayload,
     applyStatus: applyStatusPayload,
+    setTray,
     attach,
     write,
     resize,

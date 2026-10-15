@@ -67,6 +67,42 @@ export default function SessionCard({ session, now, fx, appearance }) {
   );
 }
 
+// A session that is not running but can be brought back on the same
+// conversation, in the same place. Dismiss removes it for good.
+export function DormantCard({ entry, now, fx, appearance }) {
+  const { bridge } = window.hekaton;
+  const title = entry.title && entry.title !== entry.profileName ? entry.title : null;
+  return (
+    <article className="card card--dormant" style={{ "--accent": entry.accent ?? DEFAULT_ACCENT }}>
+      <header className="card__head">
+        <span className="card__name">
+          {entry.profileName}
+          {title && <span className="card__title"> · {title}</span>}
+        </span>
+        <Money usd={entry.totalCostUsd} fx={fx} className="card__cost" />
+      </header>
+      <StateBar state="saved" detail={entry.model} since={entry.lastSeenAt} now={now} appearance={appearance} />
+      <p className="card__prompt" title={entry.lastPrompt ?? entry.firstPrompt ?? ""}>
+        {entry.lastPrompt ?? entry.firstPrompt ?? <em>No prompt recorded</em>}
+      </p>
+      <div className="card__actions">
+        <button
+          type="button"
+          className="button--primary"
+          disabled={!entry.claudeSessionId}
+          title={entry.claudeSessionId ? "Reopen this conversation where it was" : "No conversation id recorded"}
+          onClick={() => bridge.resumeInstance(entry.id)}
+        >
+          Resume
+        </button>
+        <button type="button" className="button--danger" onClick={() => bridge.dismissInstance(entry.id)}>
+          Dismiss
+        </button>
+      </div>
+    </article>
+  );
+}
+
 const EXTERNAL_STATES = { idle: "idle", busy: "running" };
 
 // A Claude Code session running on this machine that Hekaton did not launch.

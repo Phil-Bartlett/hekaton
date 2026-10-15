@@ -10,6 +10,7 @@ export const STATUS_STATES = Object.freeze({
   compacting: { label: "COMPACTING", color: "#0ea5e9" },
   failed: { label: "FAILED", color: "#ef4444" },
   exited: { label: "EXITED", color: "#374151" },
+  saved: { label: "SAVED", color: "#4b5563" },
 });
 
 export function statusAppearance(state, overrides = {}) {

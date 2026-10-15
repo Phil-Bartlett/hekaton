@@ -1,8 +1,10 @@
 import { app, dialog, globalShortcut, ipcMain, shell } from "electron";
 import os from "node:os";
+import path from "node:path";
 import { CH } from "../shared/channels.js";
 import { createFx } from "./fx.js";
 import { createHistory } from "./history.js";
+import { createInstances, summarise } from "./instances.js";
 import { computeBounds } from "./placement.js";
 import { watchRegistry } from "./registry.js";
 import { scanReference } from "./scanner.js";
@@ -10,7 +12,7 @@ import { createSessionManager } from "./sessions.js";
 import { createStore } from "./store.js";
 import { startTelemetryServer } from "./telemetry.js";
 import { createUsage } from "./usage.js";
-import { createWindowManager, listDisplays } from "./windows.js";
+import { boundsOnScreen, createWindowManager, listDisplays } from "./windows.js";
 
 // xterm's ConPTY quirk handling is keyed on the Windows build number.
 const OS_BUILD = Number(os.release().split(".")[2]) || 0;
@@ -23,14 +25,38 @@ function argValue(flag) {
 // A second launch just raises the Bridge of the running instance.
 if (!app.requestSingleInstanceLock()) app.quit();
 
-const windows = createWindowManager({ onSessionBounds: () => broadcast() });
+const windows = createWindowManager({
+  onSessionBounds: (id) => {
+    recordInstance(id);
+    broadcast();
+  },
+  onBridgeBounds: (bounds) => instances?.setBridgeBounds(bounds),
+});
 let sessions = null;
 let store = null;
 let history = null;
+let instances = null;
 let fx = null;
 let usage = null;
 let registry = [];
 const recorded = new Set();
+
+// The Bridge keeps a card for every session it has launched, running or not;
+// the live ones are refreshed on every change so a relaunch can bring them
+// back as dormant cards at their last position.
+function instanceSummary(session) {
+  const chrome = windows.sessionChrome(session.id);
+  return summarise(session, {
+    bounds: windows.sessionBounds(session.id) ?? instances.get(session.id)?.bounds ?? null,
+    pinned: chrome?.pinned ?? false,
+    trayOpen: session.trayOpen === true,
+  });
+}
+
+function recordInstance(id) {
+  const session = sessions?.get(id);
+  if (session) instances.record(instanceSummary(session));
+}
 
 // Sessions Claude Code knows about that this app did not launch.
 function externalSessions() {
@@ -52,6 +78,7 @@ function snapshot() {
     settings: store.settings(),
     profiles: store.profiles(),
     sessions: sessions.list().map((session) => ({ ...session, bounds: windows.sessionBounds(session.id) })),
+    dormant: instances.dormant(),
     external: externalSessions(),
   };
 }
@@ -92,19 +119,26 @@ function onSessionEvent(event, id, payload) {
   if (event === "exit") {
     windows.sendToSession(id, CH.ptyExit, payload);
     recordHistory(sessions.get(id));
+    recordInstance(id);
     broadcast();
   }
   if (event === "update") {
     logUpdate(payload);
     windows.sendToSession(id, CH.sessionUpdate, { ...payload, fx: fx.current(), settings: store.settings() });
+    recordInstance(id);
     broadcast();
   }
   if (event === "activity") windows.sendToSession(id, CH.sessionActivity, payload);
 }
 
+// A session that ends, by any route, stays on the Bridge as a dormant card
+// until it is dismissed.
 function forgetSession(id) {
   const session = sessions.get(id);
-  if (session) recordHistory(session);
+  if (session) {
+    recordHistory(session);
+    instances.markDormant(id, instanceSummary(session));
+  }
   sessions.remove(id);
   recorded.delete(id);
 }
@@ -115,21 +149,52 @@ function applyHotkey(accelerator) {
   globalShortcut.unregisterAll();
   if (!accelerator) return true;
   try {
-    return globalShortcut.register(accelerator, () => windows.createBridgeWindow());
+    return globalShortcut.register(accelerator, () => windows.createBridgeWindow(instances?.bridgeBounds()));
   } catch {
     return false;
   }
 }
 
-function launchProfile(profile) {
-  const session = sessions.launch(profile, { binary: store.settings().claudeBinary });
-  const win = windows.createSessionWindow(session, computeBounds(profile, listDisplays()));
+function launchProfile(profile, { id, bounds, pinned, trayOpen } = {}) {
+  const session = sessions.launch(profile, { binary: store.settings().claudeBinary, id, trayOpen });
+  const placement = boundsOnScreen(bounds) ?? computeBounds(profile, listDisplays());
+  const win = windows.createSessionWindow(session, placement, { pinned });
   win.on("closed", () => {
     forgetSession(session.id);
     broadcast();
   });
+  recordInstance(session.id);
   broadcast();
   return session;
+}
+
+// A dormant card comes back as the same card: same id, last window position,
+// pin and tray state, on the conversation it was running.
+function resumeInstance(id) {
+  const entry = instances.get(id);
+  if (!entry || entry.live || !entry.claudeSessionId) return null;
+  const saved = store.findProfile(entry.profileId);
+  const profile = saved ?? {
+    name: entry.profileName,
+    cwd: entry.cwd,
+    accent: entry.accent ?? undefined,
+    colorScope: entry.colorScope ?? "border+title",
+  };
+  return launchProfile(
+    { ...profile, cwd: entry.cwd || profile.cwd, resume: entry.claudeSessionId },
+    { id, bounds: entry.bounds, pinned: entry.pinned, trayOpen: entry.trayOpen },
+  );
+}
+
+// Everything still running is written out dormant before the ptys die, so a
+// quit, or a Windows shutdown, never loses the cards.
+function flushForQuit() {
+  if (!sessions || !instances) return;
+  for (const session of sessions.list()) {
+    recordHistory(session);
+    instances.markDormant(session.id, instanceSummary(session));
+  }
+  instances.saveNow();
 }
 
 function terminateSession(id) {
@@ -187,6 +252,9 @@ ipcMain.on(CH.windowCloseLock, (event, id, locked) => {
   if (ownsInstance(event, id)) windows.lockSession(id, locked === true);
 });
 ipcMain.on(CH.windowControl, (event, action) => windows.controlWindow(event.sender, action));
+ipcMain.on(CH.windowTray, (event, id, open) => {
+  if (ownsInstance(event, id)) sessions.setTray(id, open === true);
+});
 
 ipcMain.handle(CH.bridgeGetState, (event) => (fromBridge(event) ? snapshot() : null));
 ipcMain.handle(CH.profileSave, (event, profile) => {
@@ -220,6 +288,13 @@ ipcMain.on(CH.sessionTerminate, (event, id) => {
 });
 ipcMain.on(CH.sessionMoveTo, (event, id, x, y) => {
   if (fromBridge(event)) windows.moveSession(id, x, y);
+});
+ipcMain.handle(CH.instanceResume, (event, id) => (fromBridge(event) ? resumeInstance(id) : null));
+ipcMain.handle(CH.instanceDismiss, (event, id) => {
+  if (!fromBridge(event)) return false;
+  const removed = instances.dismiss(id);
+  if (removed) broadcast();
+  return removed;
 });
 ipcMain.handle(CH.historyList, (event) => (fromBridge(event) ? history.list() : []));
 ipcMain.handle(CH.referenceList, (event) =>
@@ -258,7 +333,7 @@ ipcMain.handle(CH.dialogPickFile, async (event) => {
 });
 ipcMain.handle(CH.appOpenDataFolder, (event) => (fromBridge(event) ? shell.openPath(app.getPath("userData")) : null));
 
-app.on("second-instance", () => windows.createBridgeWindow());
+app.on("second-instance", () => windows.createBridgeWindow(instances?.bridgeBounds()));
 
 app.whenReady().then(async () => {
   const telemetryServer = await startTelemetryServer((kind, id, payload) => {
@@ -269,6 +344,7 @@ app.whenReady().then(async () => {
   console.log(`telemetry receiver on 127.0.0.1:${telemetryServer.port}`);
   store = createStore();
   history = createHistory();
+  instances = createInstances({ file: path.join(app.getPath("userData"), "state.json") });
   fx = createFx();
   usage = createUsage();
   sessions = createSessionManager(onSessionEvent, telemetryServer);
@@ -276,7 +352,7 @@ app.whenReady().then(async () => {
     registry = rows;
     broadcast();
   });
-  windows.createBridgeWindow();
+  windows.createBridgeWindow(instances.bridgeBounds());
   applyHotkey(store.settings().hotkey);
 
   // `hekaton --launch=<profile name or id>` opens a session straight away.
@@ -290,4 +366,8 @@ app.whenReady().then(async () => {
 
 app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => globalShortcut.unregisterAll());
-app.on("before-quit", () => sessions?.killAll());
+app.on("session-end", flushForQuit);
+app.on("before-quit", () => {
+  flushForQuit();
+  sessions?.killAll();
+});
