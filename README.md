@@ -54,11 +54,14 @@ Windows 11 first; the platform-specific bits (binary path, window chrome, ConPTY
 
 ## Packages
 
+All build artifacts land in `out/` (gitignored), named by version.
+
 - Windows: `npm run dist` builds `out/Hekaton-Setup-<version>.exe` (per-user NSIS installer).
-- Linux: `npm run dist:linux` builds `out/Hekaton-<version>-x64.AppImage` and `.deb` (node-pty is
-  rebuilt for Electron first, as it ships no Linux prebuild). Install the deb with
-  `sudo apt install ./Hekaton-<version>-amd64.deb`, or `chmod +x` the AppImage and run it. On Ubuntu
-  24.04 an AppImage may need `--no-sandbox` because of the AppArmor user-namespace restriction.
+- Linux: `npm run dist:linux` builds `out/Hekaton-<version>-x86_64.AppImage` and
+  `out/Hekaton-<version>-amd64.deb` (node-pty is rebuilt for Electron first, as it ships no Linux
+  prebuild). Install the deb with `sudo apt install ./Hekaton-<version>-amd64.deb`, or `chmod +x` the
+  AppImage and run it. On Ubuntu 24.04 an AppImage may need `--no-sandbox` because of the AppArmor
+  user-namespace restriction.
 - macOS: `npm run dist:mac` builds a dmg; unsigned, so first launch is right-click, Open.
 - CI builds the Windows installer and the Linux packages on every push to main and keeps them as
   workflow artifacts. Pushing a `v*` tag (`git tag v0.2.0 && git push origin v0.2.0`) builds them again
