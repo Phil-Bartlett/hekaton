@@ -8,6 +8,22 @@ export function formatElapsed(ms) {
   return `${seconds}s`;
 }
 
+// Separate from formatElapsed: an age against an absolute past timestamp can
+// span days or weeks, where the stopwatch form (used for the live session
+// timer) would read "300h". Keep both — they serve different scales.
+export function formatAge(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(total / 60);
+  const hours = Math.floor(total / 3600);
+  const days = Math.floor(total / 86400);
+  const weeks = Math.floor(total / 604800);
+  if (weeks) return `${weeks}w ${days % 7}d`;
+  if (days) return `${days}d ${hours % 24}h`;
+  if (hours) return `${hours}h ${String(minutes % 60).padStart(2, "0")}m`;
+  if (minutes) return `${minutes}m`;
+  return `${total}s`;
+}
+
 export function formatDuration(ms) {
   if (ms === null || ms === undefined) return "…";
   if (ms < 1000) return `${Math.round(ms)}ms`;

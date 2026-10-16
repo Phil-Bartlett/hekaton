@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { formatElapsed } from "../shared/format.js";
+import { formatAge } from "../shared/format.js";
 
 function ago(epochMs, now) {
-  return `${formatElapsed(now - epochMs)} ago`;
+  return `${formatAge(now - epochMs)} ago`;
 }
 
 function folderName(cwd) {

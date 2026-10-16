@@ -1,4 +1,4 @@
-import { formatElapsed } from "../shared/format.js";
+import { formatAge } from "../shared/format.js";
 import Money from "../shared/Money.jsx";
 
 const THRESHOLDS = { session: [70, 90], weekly: [60, 80] };
@@ -51,7 +51,7 @@ export default function UsagePanel({ usage, fx, now }) {
         <>
           <LimitBar label="Session" limit={rateLimits.five_hour} thresholds={THRESHOLDS.session} />
           <LimitBar label="Weekly" limit={rateLimits.seven_day} thresholds={THRESHOLDS.weekly} />
-          <span className="usage__updated">Updated {formatElapsed(now - at)} ago</span>
+          <span className="usage__updated">Updated {formatAge(now - at)} ago</span>
         </>
       ) : (
         <span className="usage__empty">Quota appears once a session reports.</span>

@@ -384,6 +384,7 @@ ipcMain.handle(CH.sessionGet, (event, id) =>
         ...sessions.get(id),
         osBuild: OS_BUILD,
         platform: process.platform,
+        chrome: windows.sessionChrome(id),
         fx: fx.current(),
         settings: store.settings(),
       }

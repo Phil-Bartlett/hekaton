@@ -41,6 +41,7 @@ export default function App() {
         initial.activity ?? { turns: [], totalCostUsd: 0, unpriced: false, droppedTurns: 0, links: [], title: null },
       );
       setTrayOpen(initial.trayOpen === true);
+      if (initial.chrome) setChrome(initial.chrome);
     });
     const unsubscribe = [
       hekaton.session.onUpdate((next) => setSession((current) => ({ ...current, ...next }))),

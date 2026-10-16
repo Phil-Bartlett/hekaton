@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { formatElapsed } from "../shared/format.js";
+import { formatAge } from "../shared/format.js";
 import Money from "../shared/Money.jsx";
 import { DEFAULT_ACCENT } from "./ProfilesRail.jsx";
 
 function ago(epochMs, now) {
-  return `${formatElapsed(now - epochMs)} ago`;
+  return `${formatAge(now - epochMs)} ago`;
 }
 
 export default function HistoryDialog({ fx, onClose }) {
