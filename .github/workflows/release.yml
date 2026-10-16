@@ -1,10 +1,15 @@
 name: Release
 
 # A v* tag builds every package and attaches them to a GitHub Release, so a
-# colleague installs from the Releases page rather than a CI artifact.
+# colleague installs from the Releases page rather than a CI artifact. The
+# macOS dmg has no local build host, so it is built here. A manual run
+# (workflow_dispatch) builds only the mac dmg as an artifact, to try it
+# without cutting a release; the Windows and Linux legs and the release
+# itself run on a tag, where CI has already proven those two platforms.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,6 +17,7 @@ permissions:
 jobs:
   package-windows:
     name: Installer (Windows)
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
@@ -37,6 +43,7 @@ jobs:
 
   package-linux:
     name: AppImage and deb (Linux)
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
@@ -62,9 +69,37 @@ jobs:
             out/Hekaton-*.deb
           if-no-files-found: error
 
+  package-mac:
+    name: dmg (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      # node-pty ships darwin arm64 and x64 prebuilds that load in Electron 44,
+      # so no native rebuild step is needed here.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build dmg
+        run: npm run dist:mac
+
+      - name: Upload dmg
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hekaton-mac
+          path: out/Hekaton-*.dmg
+          if-no-files-found: error
+
   release:
     name: Publish release
-    needs: [package-windows, package-linux]
+    needs: [package-windows, package-linux, package-mac]
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
