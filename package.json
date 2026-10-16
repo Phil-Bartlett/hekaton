@@ -20,7 +20,7 @@
     "test": "vitest run",
     "rebuild": "electron-rebuild -f -w node-pty",
     "dist": "node scripts/build.mjs && electron-builder --publish never --win nsis",
-    "dist:mac": "node scripts/build.mjs && electron-builder --publish never --mac dmg",
+    "dist:mac": "node scripts/build.mjs && electron-builder --publish never --mac dmg --arm64 --x64",
     "icon": "electron scripts/icon.cjs",
     "dist:linux": "node scripts/build.mjs && electron-rebuild -f -w node-pty && electron-builder --publish never --linux"
   },
