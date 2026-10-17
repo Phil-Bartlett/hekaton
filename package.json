@@ -48,6 +48,7 @@
     "appId": "io.github.philbartlett.hekaton",
     "productName": "Hekaton",
     "copyright": "Copyright \u00a9 2026 Phil Bartlett",
+    "afterPack": "./scripts/after-pack.cjs",
     "directories": {
       "output": "out",
       "buildResources": "build"

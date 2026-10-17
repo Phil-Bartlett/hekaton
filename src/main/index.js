@@ -275,8 +275,30 @@ function applyHotkey(accelerator) {
   }
 }
 
+// A spawn that fails throws before any window exists, so a dialog is the only
+// way the user learns why nothing opened.
+function reportLaunchFailure(profile, error) {
+  console.error(`launch failed for "${profile.name}":`, error);
+  const bridge = windows.bridgeWindow();
+  const options = {
+    type: "error",
+    title: "Couldn't start the session",
+    message: `Hekaton couldn't start "${profile.name ?? "the session"}".`,
+    detail: error.message,
+    buttons: ["OK"],
+  };
+  if (bridge) dialog.showMessageBox(bridge, options);
+  else dialog.showMessageBox(options);
+}
+
 function launchProfile(profile, { id, bounds, pinned, trayOpen } = {}) {
-  const session = sessions.launch(profile, { binary: store.settings().claudeBinary, id, trayOpen });
+  let session;
+  try {
+    session = sessions.launch(profile, { binary: store.settings().claudeBinary, id, trayOpen });
+  } catch (error) {
+    reportLaunchFailure(profile, error);
+    return null;
+  }
   const placement = boundsOnScreen(bounds) ?? computeBounds(profile, listDisplays());
   const win = windows.createSessionWindow(session, placement, { pinned });
   win.on("closed", () => {

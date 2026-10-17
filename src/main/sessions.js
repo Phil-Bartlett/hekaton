@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { app } from "electron";
 import pty from "node-pty";
@@ -71,6 +71,16 @@ export function createSessionManager(emit, telemetryServer) {
   function launch(profile, { binary, id: givenId, trayOpen } = {}) {
     const id = givenId ?? randomUUID();
     const sessionId = profile.resume ? profile.resume : randomUUID();
+    // node-pty reports a missing working directory and a missing binary as the
+    // same opaque "posix_spawnp failed", so check the directory first to give a
+    // cause the caller can act on.
+    if (!profile.cwd || !existsSync(profile.cwd)) {
+      throw new Error(
+        `The working directory for "${profile.name ?? "this profile"}" does not exist on this machine:\n` +
+          `${profile.cwd || "(no folder set)"}\n\n` +
+          `Edit the profile and choose a folder that exists here.`,
+      );
+    }
     const settingsPath = writeSettings(id);
     // A fresh launch with the worktree flag runs in its own checkout; a resume
     // already has the worktree recorded as its cwd and must not make another.
@@ -79,17 +89,28 @@ export function createSessionManager(emit, telemetryServer) {
       if (worktree.created) profile = { ...profile, cwd: worktree.dir };
     }
     const args = claudeArgs({ ...profile, name: launchName(profile), sessionId, settingsPath });
-    const term = pty.spawn(claudeBinary(binary), args, {
-      name: "xterm-256color",
-      cols: DEFAULT_COLS,
-      rows: DEFAULT_ROWS,
-      cwd: profile.cwd,
-      env: launchEnv(process.env, {
-        HEKATON_INSTANCE: id,
-        TERM_PROGRAM: "hekaton",
-        COLORTERM: "truecolor",
-      }),
-    });
+    let term;
+    try {
+      term = pty.spawn(claudeBinary(binary), args, {
+        name: "xterm-256color",
+        cols: DEFAULT_COLS,
+        rows: DEFAULT_ROWS,
+        cwd: profile.cwd,
+        env: launchEnv(process.env, {
+          HEKATON_INSTANCE: id,
+          TERM_PROGRAM: "hekaton",
+          COLORTERM: "truecolor",
+        }),
+      });
+    } catch (cause) {
+      rmSync(settingsPath, { force: true });
+      throw new Error(
+        `Could not start Claude for "${profile.name ?? "this profile"}".\n` +
+          `${cause.message}\n\n` +
+          `Tried to run: ${claudeBinary(binary)}\n` +
+          `If that is not the right path, set the Claude binary under Settings, Paths.`,
+      );
+    }
     const session = {
       id,
       sessionId,
