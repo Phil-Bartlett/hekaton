@@ -197,16 +197,38 @@ export function createSessionManager(emit, telemetryServer) {
     return session.scrollback.join("");
   }
 
+  // A write/resize/kill can arrive from the window just as the pty exits; once
+  // its fd is closed node-pty throws (EBADF on resize), which would crash the
+  // main process, so skip a dead session and swallow the close race.
   function write(id, data) {
-    sessions.get(id)?.term.write(data);
+    const session = sessions.get(id);
+    if (!session || session.exitCode !== null) return;
+    try {
+      session.term.write(data);
+    } catch {
+      // pty closed between the check and the write
+    }
   }
 
   function resize(id, cols, rows) {
-    if (cols > 0 && rows > 0) sessions.get(id)?.term.resize(cols, rows);
+    if (cols <= 0 || rows <= 0) return;
+    const session = sessions.get(id);
+    if (!session || session.exitCode !== null) return;
+    try {
+      session.term.resize(cols, rows);
+    } catch {
+      // pty closed between the check and the resize
+    }
   }
 
   function kill(id) {
-    sessions.get(id)?.term.kill();
+    const session = sessions.get(id);
+    if (!session || session.exitCode !== null) return;
+    try {
+      session.term.kill();
+    } catch {
+      // pty already gone
+    }
   }
 
   function get(id) {
