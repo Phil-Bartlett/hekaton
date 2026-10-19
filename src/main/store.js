@@ -29,6 +29,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   showSessionNames: true,
   layout: { sort: "manual", density: "comfortable" },
   tiling: { layout: "grid", gap: DEFAULT_GAP },
+  layouts: [],
   notifyApproval: true,
   notifyFinished: true,
   keepInTray: true,

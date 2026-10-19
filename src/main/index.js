@@ -492,6 +492,49 @@ ipcMain.on(CH.sessionsUndoTile, (event) => {
   untile = null;
   broadcast();
 });
+
+const MAX_LAYOUT_NAME = 60;
+
+// A named layout remembers where every live card's window sits. Cards keep
+// their id across a relaunch and resume, so applying it later moves
+// whichever of them are live again; saving under an existing name replaces it.
+function saveLayout(name) {
+  const trimmed = String(name ?? "")
+    .trim()
+    .slice(0, MAX_LAYOUT_NAME);
+  const ids = sessions.list().map((session) => session.id);
+  if (!trimmed || ids.length === 0) return null;
+  const layout = { id: randomUUID(), name: trimmed, savedAt: Date.now(), placements: windows.captureSessions(ids) };
+  const others = store.settings().layouts.filter((existing) => existing.name !== trimmed);
+  store.saveSettings({ layouts: [...others, layout] });
+  broadcast();
+  return layout;
+}
+
+// A position on a display that has since gone is skipped, not applied.
+function applyLayout(id) {
+  const layout = store.settings().layouts.find((candidate) => candidate.id === id);
+  if (!layout) return;
+  const placements = Object.fromEntries(
+    Object.entries(layout.placements).filter(
+      ([cardId, placement]) => windows.sessionWindow(cardId) && boundsOnScreen(placement.bounds),
+    ),
+  );
+  if (Object.keys(placements).length === 0) return;
+  untile = windows.captureSessions(Object.keys(placements));
+  windows.restoreSessions(placements);
+  broadcast();
+}
+
+ipcMain.handle(CH.layoutSave, (event, name) => (fromBridge(event) ? saveLayout(name) : null));
+ipcMain.on(CH.layoutApply, (event, id) => {
+  if (fromBridge(event)) applyLayout(id);
+});
+ipcMain.on(CH.layoutDelete, (event, id) => {
+  if (!fromBridge(event)) return;
+  store.saveSettings({ layouts: store.settings().layouts.filter((layout) => layout.id !== id) });
+  broadcast();
+});
 ipcMain.handle(CH.instanceResume, (event, id) => (fromBridge(event) ? resumeInstance(id) : null));
 ipcMain.handle(CH.instanceDismiss, (event, id) => {
   if (!fromBridge(event)) return false;

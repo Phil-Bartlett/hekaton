@@ -1020,7 +1020,8 @@
   font-size: 12px;
 }
 
-.history-entry__foot button {
+.history-entry__foot button,
+.dialog__toolbar button {
   font: inherit;
   padding: 4px 10px;
   border-radius: 4px;
@@ -1030,9 +1031,15 @@
   cursor: pointer;
 }
 
-.history-entry__foot button:disabled {
+.history-entry__foot button:disabled,
+.dialog__toolbar button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.history-entry__actions {
+  display: flex;
+  gap: 6px;
 }
 
 /* ---- Command palette (Ctrl/Cmd+K) ---------------------------------------- */

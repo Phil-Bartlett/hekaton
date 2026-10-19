@@ -8,8 +8,9 @@ function matches(haystack, needle) {
   return haystack.toLowerCase().includes(needle);
 }
 
-// Ways to tile the live windows. They lead the index so a search for them
-// is never crowded out by sessions, and stay out of the unfiltered list.
+// Ways to tile the live windows or apply a saved layout. They lead the index
+// so a search for them is never crowded out by sessions, and stay out of
+// the unfiltered list.
 function tileCommands(state) {
   const commands = [];
   const live = liveIdsInOrder(state);
@@ -23,6 +24,18 @@ function tileCommands(state) {
         accent: "#555555",
         text: `tile ${label} windows layout arrange`,
         run: () => window.hekaton.bridge.tile({ ids: live, layout }),
+        searchOnly: true,
+      });
+    }
+    for (const saved of state.settings.layouts) {
+      commands.push({
+        key: `layout:${saved.id}`,
+        kind: "Layout",
+        title: saved.name,
+        detail: "Saved layout",
+        accent: "#555555",
+        text: `layout ${saved.name}`,
+        run: () => window.hekaton.bridge.applyLayout(saved.id),
         searchOnly: true,
       });
     }

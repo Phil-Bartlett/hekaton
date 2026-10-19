@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import CommandPalette from "./CommandPalette.jsx";
 import AdoptDialog from "./AdoptDialog.jsx";
 import HistoryDialog from "./HistoryDialog.jsx";
+import LayoutsDialog from "./LayoutsDialog.jsx";
 import MonitorMap from "./MonitorMap.jsx";
 import ProfileEditor from "./ProfileEditor.jsx";
 import ProfilesRail from "./ProfilesRail.jsx";
@@ -111,6 +112,7 @@ function TileControls({ state, ids }) {
   const { bridge } = window.hekaton;
   const tiling = { layout: "grid", ...state.settings.tiling };
   const [displayId, setDisplayId] = useState("");
+  const [layoutsOpen, setLayoutsOpen] = useState(false);
   return (
     <span className="layout-controls tile-controls">
       <select
@@ -150,6 +152,16 @@ function TileControls({ state, ids }) {
       >
         Undo
       </button>
+      <button type="button" title="Save or apply a named window arrangement" onClick={() => setLayoutsOpen(true)}>
+        Layouts
+      </button>
+      {layoutsOpen && (
+        <LayoutsDialog
+          layouts={state.settings.layouts}
+          liveCount={state.sessions.length}
+          onClose={() => setLayoutsOpen(false)}
+        />
+      )}
     </span>
   );
 }

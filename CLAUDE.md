@@ -45,8 +45,9 @@ on hover. `hekaton --launch=<profile>` opens a profile from the command line. In
 (live or SAVED) with its Claude conversation id, window bounds and layout order; Resume reopens the
 same card, Dismiss removes it; cards can be moved between profiles and reordered; tiles, compact
 tiles or list view. Tiling (2026-10-20): the Bridge toolbar and Ctrl+K lay the live windows on show
-out on one display (grid / columns / rows / main + stack, `src/main/tiling.js`) with an undo. All three platforms build in CI (macOS dmg via
-`release.yml`). Next: saved named layouts, then a window-manager mode for Hyprland / Omarchy.
+out on one display (grid / columns / rows / main + stack, `src/main/tiling.js`) with an undo, plus saved named layouts
+(`settings.layouts`, keyed by card id so they apply after a relaunch). All three platforms build in CI
+(macOS dmg via `release.yml`). Next: a window-manager mode for Hyprland / Omarchy.
 
 Traps:
 

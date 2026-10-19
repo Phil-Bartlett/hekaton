@@ -7,7 +7,7 @@ const emptyState = {
   external: [],
   profiles: [],
   order: [],
-  settings: { layout: { sort: "manual" } },
+  settings: { layout: { sort: "manual" }, layouts: [] },
   canUndoTile: false,
 };
 
@@ -41,5 +41,17 @@ describe("buildIndex", () => {
     const live = { ...emptyState, sessions: [liveSession([])] };
     expect(tiles(live).map((item) => item.key)).toEqual(["tile:grid", "tile:columns", "tile:rows", "tile:main"]);
     expect(tiles({ ...live, canUndoTile: true }).at(-1).key).toBe("tile:undo");
+  });
+
+  it("offers saved layouts by name, only when searched for", () => {
+    const saved = { id: "l1", name: "Desk", savedAt: 0, placements: {} };
+    const state = {
+      ...emptyState,
+      sessions: [liveSession([])],
+      settings: { ...emptyState.settings, layouts: [saved] },
+    };
+    const layout = buildIndex(state).find((item) => item.kind === "Layout");
+    expect(layout).toMatchObject({ key: "layout:l1", title: "Desk", searchOnly: true });
+    expect(layout.text).toContain("Desk");
   });
 });
