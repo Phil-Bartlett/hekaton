@@ -162,3 +162,51 @@ body {
   background: var(--bg-elevated);
   border-top: 1px solid var(--accent);
 }
+
+/* ---- Render-error fallback (shared/ErrorBoundary.jsx) ------------------- */
+
+.crash {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+.crash__title {
+  margin: 0;
+  font-size: 16px;
+  color: var(--danger);
+}
+
+.crash__message {
+  align-self: stretch;
+  flex: 0 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--fg-muted);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.crash__reload {
+  padding: 6px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--control);
+  color: var(--fg);
+  font: inherit;
+}
+
+.crash__reload:hover {
+  background: var(--control-hover);
+}

@@ -11,6 +11,7 @@ import SessionCard, { DormantCard, ExternalSessionCard } from "./SessionCard.jsx
 import SettingsView from "./SettingsView.jsx";
 import UsagePanel from "./UsagePanel.jsx";
 import CaptionButtons from "../shared/CaptionButtons.jsx";
+import ErrorBoundary from "../shared/ErrorBoundary.jsx";
 import { applyTheme, resolveTheme } from "../shared/themes.js";
 import "../shared/theme.css";
 import "./bridge.css";
@@ -455,4 +456,8 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(document.getElementById("root")).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>,
+);
