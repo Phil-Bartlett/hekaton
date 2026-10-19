@@ -8,8 +8,9 @@ export const SIZE_PRESETS = Object.freeze({
   large: [1600, 1000],
 });
 
-const MIN_WIDTH = 480;
-const MIN_HEIGHT = 240;
+// The smallest a session window may be; the BrowserWindow enforces the same.
+export const MIN_WIDTH = 480;
+export const MIN_HEIGHT = 240;
 
 // Column and row index (0..2) for each anchor.
 const ANCHORS = Object.freeze({

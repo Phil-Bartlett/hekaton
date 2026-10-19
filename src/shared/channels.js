@@ -27,6 +27,8 @@ export const CH = Object.freeze({
   sessionBringHere: "session:bring-here",
   sessionTerminate: "session:terminate",
   sessionMoveTo: "session:move-to",
+  sessionsTile: "sessions:tile",
+  sessionsUndoTile: "sessions:undo-tile",
   instanceResume: "instance:resume",
   instanceDismiss: "instance:dismiss",
   instanceMove: "instance:move",

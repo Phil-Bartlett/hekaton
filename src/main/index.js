@@ -16,6 +16,7 @@ import { endOutsideSession } from "./endOutside.js";
 import { createSessionManager } from "./sessions.js";
 import { attentionFor } from "./state.js";
 import { createStore } from "./store.js";
+import { TILE_LAYOUTS } from "./tiling.js";
 import { startTelemetryServer } from "./telemetry.js";
 import { createTray } from "./tray.js";
 import { createUsage } from "./usage.js";
@@ -50,6 +51,8 @@ let usage = null;
 let tray = null;
 let quitting = false;
 let registry = [];
+// Where the windows were before the last tile, for its undo.
+let untile = null;
 const recorded = new Set();
 const lastState = new Map();
 
@@ -193,6 +196,7 @@ function snapshot() {
     dormant: annotateOrphans(instances.dormant()),
     order: instances.order(),
     external: externalSessions(),
+    canUndoTile: untile !== null,
   };
 }
 
@@ -467,6 +471,26 @@ ipcMain.on(CH.sessionTerminate, (event, id) => {
 });
 ipcMain.on(CH.sessionMoveTo, (event, id, x, y) => {
   if (fromBridge(event)) windows.moveSession(id, x, y);
+});
+// The Bridge sends the live cards it is showing, in its own order, so a
+// tile follows the sort and profile filter on screen.
+ipcMain.on(CH.sessionsTile, (event, { ids, displayId = null, layout } = {}) => {
+  if (!fromBridge(event) || !Array.isArray(ids)) return;
+  const live = new Set(sessions.list().map((session) => session.id));
+  const tiled = ids.filter((id) => live.has(id));
+  if (tiled.length === 0) return;
+  const { tiling } = store.settings();
+  untile = windows.tileSessions(tiled, displayId, {
+    layout: TILE_LAYOUTS.includes(layout) ? layout : tiling.layout,
+    gap: tiling.gap,
+  });
+  broadcast();
+});
+ipcMain.on(CH.sessionsUndoTile, (event) => {
+  if (!fromBridge(event) || !untile) return;
+  windows.restoreSessions(untile);
+  untile = null;
+  broadcast();
 });
 ipcMain.handle(CH.instanceResume, (event, id) => (fromBridge(event) ? resumeInstance(id) : null));
 ipcMain.handle(CH.instanceDismiss, (event, id) => {

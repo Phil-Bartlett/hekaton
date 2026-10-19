@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_ACCENT } from "./ProfilesRail.jsx";
+import { TILE_LAYOUT_LABELS, liveIdsInOrder } from "./cards.js";
 
 const MAX_RESULTS = 12;
 
@@ -7,10 +8,44 @@ function matches(haystack, needle) {
   return haystack.toLowerCase().includes(needle);
 }
 
-// Everything the palette can jump to: a session (by name, folder, any
-// prompt it has run), an external session, or a profile to launch.
+// Ways to tile the live windows. They lead the index so a search for them
+// is never crowded out by sessions, and stay out of the unfiltered list.
+function tileCommands(state) {
+  const commands = [];
+  const live = liveIdsInOrder(state);
+  if (live.length > 0) {
+    for (const [layout, label] of TILE_LAYOUT_LABELS) {
+      commands.push({
+        key: `tile:${layout}`,
+        kind: "Tile",
+        title: `${label}: every live window`,
+        detail: `${live.length} on this display`,
+        accent: "#555555",
+        text: `tile ${label} windows layout arrange`,
+        run: () => window.hekaton.bridge.tile({ ids: live, layout }),
+        searchOnly: true,
+      });
+    }
+  }
+  if (state.canUndoTile) {
+    commands.push({
+      key: "tile:undo",
+      kind: "Tile",
+      title: "Undo the last tile",
+      detail: "Put the windows back",
+      accent: "#555555",
+      text: "undo tile windows layout restore",
+      run: () => window.hekaton.bridge.undoTile(),
+      searchOnly: true,
+    });
+  }
+  return commands;
+}
+
+// Everything the palette can jump to: a tiling command, a session (by name,
+// folder, any prompt it has run), an external session, or a profile to launch.
 export function buildIndex(state) {
-  const items = [];
+  const items = tileCommands(state);
   for (const session of state.sessions) {
     const prompts = (session.activity?.turns ?? []).map((turn) => turn.prompt);
     items.push({
@@ -31,7 +66,7 @@ export function buildIndex(state) {
         accent: session.profile.accent ?? DEFAULT_ACCENT,
         text: prompt,
         run: () => window.hekaton.bridge.focus(session.id),
-        promptOnly: true,
+        searchOnly: true,
       });
     }
   }
@@ -80,7 +115,7 @@ export default function CommandPalette({ state, onClose }) {
   const index = useMemo(() => buildIndex(state), [state]);
   const needle = query.trim().toLowerCase();
   const results = useMemo(() => {
-    const hits = index.filter((item) => (needle ? matches(item.text, needle) : !item.promptOnly));
+    const hits = index.filter((item) => (needle ? matches(item.text, needle) : !item.searchOnly));
     return hits.slice(0, MAX_RESULTS);
   }, [index, needle]);
 

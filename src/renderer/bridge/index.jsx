@@ -10,6 +10,7 @@ import ReferenceDialog from "./ReferenceDialog.jsx";
 import SessionCard, { DormantCard, ExternalSessionCard } from "./SessionCard.jsx";
 import SettingsView from "./SettingsView.jsx";
 import UsagePanel from "./UsagePanel.jsx";
+import { TILE_LAYOUT_LABELS, liveCard, orderCards, projectOf } from "./cards.js";
 import CaptionButtons from "../shared/CaptionButtons.jsx";
 import ErrorBoundary from "../shared/ErrorBoundary.jsx";
 import { applyTheme, resolveTheme } from "../shared/themes.js";
@@ -76,40 +77,11 @@ const SORTS = [
   ["recent", "Most recent"],
 ];
 
-// The repository a card works in, by the last segment of its directory.
-function projectOf(card) {
-  const cwd = card.cwd ?? "";
-  return cwd.split(/[\\/]/).filter(Boolean).pop() ?? "—";
-}
 const VIEWS = [
   ["comfortable", "Tiles"],
   ["compact", "Compact tiles"],
   ["list", "List"],
 ];
-
-// Live and saved cards in one list so they can be ordered together. Manual
-// order comes from state.json; cards it does not mention follow, newest first.
-function orderCards(cards, order, sort) {
-  const recency = (card) => card.lastSeenAt ?? card.startedAt ?? 0;
-  if (sort === "profile") {
-    return [...cards].sort((a, b) => a.profileName.localeCompare(b.profileName) || recency(b) - recency(a));
-  }
-  if (sort === "project") {
-    return [...cards].sort(
-      (a, b) =>
-        projectOf(a).localeCompare(projectOf(b)) ||
-        a.profileName.localeCompare(b.profileName) ||
-        recency(b) - recency(a),
-    );
-  }
-  if (sort === "recent") return [...cards].sort((a, b) => recency(b) - recency(a));
-  const rank = new Map(order.map((id, index) => [id, index]));
-  return [...cards].sort((a, b) => {
-    const ra = rank.get(a.id) ?? Infinity;
-    const rb = rank.get(b.id) ?? Infinity;
-    return ra - rb || recency(b) - recency(a);
-  });
-}
 
 function LayoutControls({ layout, onChange }) {
   const select = (key, options, label) => (
@@ -133,6 +105,55 @@ function LayoutControls({ layout, onChange }) {
   );
 }
 
+// Lays the live windows on show out side by side, in card order, on the
+// Bridge's display unless another is picked.
+function TileControls({ state, ids }) {
+  const { bridge } = window.hekaton;
+  const tiling = { layout: "grid", ...state.settings.tiling };
+  const [displayId, setDisplayId] = useState("");
+  return (
+    <span className="layout-controls tile-controls">
+      <select
+        aria-label="Tile layout"
+        value={tiling.layout}
+        onChange={(event) => bridge.saveSettings({ tiling: { ...tiling, layout: event.target.value } })}
+      >
+        {TILE_LAYOUT_LABELS.map(([value, text]) => (
+          <option key={value} value={value}>
+            {text}
+          </option>
+        ))}
+      </select>
+      {state.displays.length > 1 && (
+        <select aria-label="Tile on display" value={displayId} onChange={(event) => setDisplayId(event.target.value)}>
+          <option value="">This display</option>
+          {state.displays.map((display) => (
+            <option key={display.id} value={display.id}>
+              {display.label}
+            </option>
+          ))}
+        </select>
+      )}
+      <button
+        type="button"
+        disabled={ids.length === 0}
+        title="Lay the live windows shown here out side by side"
+        onClick={() => bridge.tile({ ids, displayId: displayId || null, layout: tiling.layout })}
+      >
+        Tile
+      </button>
+      <button
+        type="button"
+        disabled={!state.canUndoTile}
+        title="Put the windows back where they were before the last tile"
+        onClick={() => bridge.undoTile()}
+      >
+        Undo
+      </button>
+    </span>
+  );
+}
+
 function Dashboard({ state, onEditProfile, onNewProfile }) {
   const now = useNow();
   const [filter, setFilter] = useState("all");
@@ -144,18 +165,7 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
   const showOwn = filter !== EXTERNAL_FILTER;
   const showExternal = filter === "all" || filter === EXTERNAL_FILTER;
   const byProfile = (name) => filter === "all" || filter === name;
-  const live = showOwn
-    ? state.sessions
-        .filter((s) => byProfile(s.profile.name))
-        .map((s) => ({
-          kind: "live",
-          id: s.id,
-          profileName: s.profile.name,
-          cwd: s.profile.cwd,
-          startedAt: s.startedAt,
-          session: s,
-        }))
-    : [];
+  const live = showOwn ? state.sessions.filter((s) => byProfile(s.profile.name)).map(liveCard) : [];
   const dormant = showOwn
     ? state.dormant.filter((d) => byProfile(d.profileName)).map((d) => ({ kind: "dormant", ...d, entry: d }))
     : [];
@@ -218,6 +228,7 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
       />
       <div className="filter-row">
         <ProfileFilter state={state} filter={filter} onChange={setFilter} />
+        <TileControls state={state} ids={cards.filter((card) => card.kind === "live").map((card) => card.id)} />
         <LayoutControls layout={layout} onChange={(next) => bridge.saveSettings({ layout: next })} />
       </div>
       <section

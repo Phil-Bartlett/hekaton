@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { DEFAULT_GAP } from "./tiling.js";
 
 function readJson(file, fallback) {
   try {
@@ -27,6 +28,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   claudeBinary: "",
   showSessionNames: true,
   layout: { sort: "manual", density: "comfortable" },
+  tiling: { layout: "grid", gap: DEFAULT_GAP },
   notifyApproval: true,
   notifyFinished: true,
   keepInTray: true,

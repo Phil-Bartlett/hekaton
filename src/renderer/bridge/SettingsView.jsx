@@ -40,64 +40,80 @@ function Swatches({ theme }) {
 }
 
 function GeneralTab({ draft, patch, hotkeyError }) {
+  const { tiling } = draft;
   return (
-    <label className="field">
-      <span>Global hotkey to raise the Bridge</span>
-      <input
-        value={draft.hotkey}
-        onChange={(event) => patch({ hotkey: event.target.value })}
-        placeholder="e.g. CommandOrControl+Shift+H"
-        spellCheck={false}
-      />
-      <span className="field__hint">Electron accelerator syntax. Leave empty for none.</span>
-      {hotkeyError && (
-        <span className="editor__error" role="alert">
-          That hotkey could not be registered; it may be taken by another app.
+    <>
+      <label className="field">
+        <span>Global hotkey to raise the Bridge</span>
+        <input
+          value={draft.hotkey}
+          onChange={(event) => patch({ hotkey: event.target.value })}
+          placeholder="e.g. CommandOrControl+Shift+H"
+          spellCheck={false}
+        />
+        <span className="field__hint">Electron accelerator syntax. Leave empty for none.</span>
+        {hotkeyError && (
+          <span className="editor__error" role="alert">
+            That hotkey could not be registered; it may be taken by another app.
+          </span>
+        )}
+        <span className="field--flags">
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.showSessionNames !== false}
+              onChange={(event) => patch({ showSessionNames: event.target.checked })}
+            />{" "}
+            Show Claude&apos;s own session name on cards and title bars
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.notifyApproval !== false}
+              onChange={(event) => patch({ notifyApproval: event.target.checked })}
+            />{" "}
+            Notify when a session is waiting for an approval
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.notifyFinished !== false}
+              onChange={(event) => patch({ notifyFinished: event.target.checked })}
+            />{" "}
+            Notify when a session finishes a turn
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.keepInTray !== false}
+              onChange={(event) => patch({ keepInTray: event.target.checked })}
+            />{" "}
+            Keep running in the tray when every window is closed
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.launchAtLogin === true}
+              onChange={(event) => patch({ launchAtLogin: event.target.checked })}
+            />{" "}
+            Start Hekaton when I sign in (hidden in the tray)
+          </label>
         </span>
-      )}
-      <span className="field--flags">
-        <label>
-          <input
-            type="checkbox"
-            checked={draft.showSessionNames !== false}
-            onChange={(event) => patch({ showSessionNames: event.target.checked })}
-          />{" "}
-          Show Claude&apos;s own session name on cards and title bars
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={draft.notifyApproval !== false}
-            onChange={(event) => patch({ notifyApproval: event.target.checked })}
-          />{" "}
-          Notify when a session is waiting for an approval
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={draft.notifyFinished !== false}
-            onChange={(event) => patch({ notifyFinished: event.target.checked })}
-          />{" "}
-          Notify when a session finishes a turn
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={draft.keepInTray !== false}
-            onChange={(event) => patch({ keepInTray: event.target.checked })}
-          />{" "}
-          Keep running in the tray when every window is closed
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={draft.launchAtLogin === true}
-            onChange={(event) => patch({ launchAtLogin: event.target.checked })}
-          />{" "}
-          Start Hekaton when I sign in (hidden in the tray)
-        </label>
-      </span>
-    </label>
+      </label>
+      <label className="field">
+        <span>Gap between tiled windows (px)</span>
+        <input
+          type="number"
+          min={0}
+          max={64}
+          value={tiling.gap}
+          onChange={(event) =>
+            patch({ tiling: { ...tiling, gap: Math.min(Math.max(Number(event.target.value) || 0, 0), 64) } })
+          }
+        />
+        <span className="field__hint">Space left between windows, and around them, when the Bridge tiles them.</span>
+      </label>
+    </>
   );
 }
 

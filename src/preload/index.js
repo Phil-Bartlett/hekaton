@@ -51,6 +51,8 @@ contextBridge.exposeInMainWorld("hekaton", {
     bringHere: (id) => ipcRenderer.send(CH.sessionBringHere, id),
     terminate: (id) => ipcRenderer.send(CH.sessionTerminate, id),
     moveTo: (id, x, y) => ipcRenderer.send(CH.sessionMoveTo, id, x, y),
+    tile: (options) => ipcRenderer.send(CH.sessionsTile, options),
+    undoTile: () => ipcRenderer.send(CH.sessionsUndoTile),
     resumeInstance: (id) => ipcRenderer.invoke(CH.instanceResume, id),
     dismissInstance: (id) => ipcRenderer.invoke(CH.instanceDismiss, id),
     moveInstance: (id, profileId) => ipcRenderer.invoke(CH.instanceMove, id, profileId),

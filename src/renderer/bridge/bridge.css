@@ -1283,6 +1283,33 @@
   display: none;
 }
 
+.tile-controls {
+  margin-left: 12px;
+}
+
+.tile-controls + .layout-controls {
+  margin-left: 12px;
+}
+
+.tile-controls button {
+  font: inherit;
+  font-size: 12px;
+  color: var(--fg);
+  background: var(--control);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.tile-controls button:hover:not(:disabled) {
+  background: var(--control-hover);
+}
+
+.tile-controls button:disabled {
+  color: var(--fg-muted);
+  opacity: 0.6;
+}
+
 .filter-row {
   flex: none;
   display: flex;

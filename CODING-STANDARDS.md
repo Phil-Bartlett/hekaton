@@ -7,7 +7,8 @@ file records the tooling that enforces them here. Everything below runs in `npm 
 ## JavaScript and JSX
 
 - Plain modern JavaScript (ES2022+, ESM sources), React 18 function components with hooks. No
-  TypeScript, no class components, no `var`, no `React.createElement`.
+  TypeScript, no class components, no `var`, no `React.createElement`. The one exception is
+  `shared/ErrorBoundary.jsx`: React only catches render errors in a class component.
 - **Formatter: Prettier 3** with the repo `.prettierrc.json` (120 columns, double quotes, trailing
   commas). `npm run format` writes, `npm run lint` checks.
 - **Linter: ESLint 10** flat config (`eslint.config.mjs`), split by Electron tier so each file only

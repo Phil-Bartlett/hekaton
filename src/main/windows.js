@@ -1,7 +1,9 @@
 import { BrowserWindow, dialog, screen } from "electron";
 import path from "node:path";
 import { CH } from "../shared/channels.js";
+import { MIN_HEIGHT, MIN_WIDTH } from "./placement.js";
 import { IS_WINDOWS, titleBarOptions } from "./platform.js";
+import { tileRects } from "./tiling.js";
 
 // The main bundle lives at dist/main.cjs, so __dirname is dist/.
 const PRELOAD = path.join(__dirname, "preload.cjs");
@@ -140,8 +142,8 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
   function createSessionWindow(session, bounds, { pinned = false } = {}) {
     const win = new BrowserWindow({
       ...bounds,
-      minWidth: 480,
-      minHeight: 240,
+      minWidth: MIN_WIDTH,
+      minHeight: MIN_HEIGHT,
       backgroundColor: BACKGROUND,
       title: session.profile.name,
       // Square corners so the accent frame meets at the corners on Windows 11.
@@ -228,22 +230,12 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     win.focus();
   }
 
-  // Windows only re-fits a window to a new display's DPI during a manual
-  // drag, so every programmatic move clamps the window to the destination
-  // work area itself and keeps it fully on that display. The size is applied
-  // in a second step: Electron scales a bounds call by the DPI of the display
-  // the window is leaving, and Windows rescales it again on arrival, so a
-  // single call lands at the wrong size when the two displays differ.
-  function fitToDisplay(win, display, position) {
-    const area = display.workArea;
-    const current = win.getBounds();
-    const width = Math.min(current.width, area.width);
-    const height = Math.min(current.height, area.height);
-    const wanted = position ?? { x: area.x + (area.width - width) / 2, y: area.y + (area.height - height) / 2 };
-    const x = Math.round(Math.min(Math.max(wanted.x, area.x), area.x + area.width - width));
-    const y = Math.round(Math.min(Math.max(wanted.y, area.y), area.y + area.height - height));
-    const target = { x, y, width, height };
-    win.setPosition(x, y);
+  // The size is applied in a second step: Electron scales a bounds call by
+  // the DPI of the display the window is leaving, and Windows rescales it
+  // again on arrival, so a single call lands at the wrong size when the two
+  // displays differ.
+  function placeWindow(win, target) {
+    win.setPosition(target.x, target.y);
     const settle = (attempt) => {
       if (win.isDestroyed()) return;
       const now = win.getBounds();
@@ -253,6 +245,77 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
       if (attempt < 3) setTimeout(() => settle(attempt + 1), 80);
     };
     setTimeout(() => settle(0), 50);
+  }
+
+  // Windows only re-fits a window to a new display's DPI during a manual
+  // drag, so every programmatic move clamps the window to the destination
+  // work area itself and keeps it fully on that display.
+  function fitToDisplay(win, display, position) {
+    const area = display.workArea;
+    const current = win.getBounds();
+    const width = Math.min(current.width, area.width);
+    const height = Math.min(current.height, area.height);
+    const wanted = position ?? { x: area.x + (area.width - width) / 2, y: area.y + (area.height - height) / 2 };
+    const x = Math.round(Math.min(Math.max(wanted.x, area.x), area.x + area.width - width));
+    const y = Math.round(Math.min(Math.max(wanted.y, area.y), area.y + area.height - height));
+    placeWindow(win, { x, y, width, height });
+  }
+
+  // Where each window is now, in a form restoreSessions can put back.
+  function captureSessions(ids) {
+    const placements = {};
+    for (const id of ids) {
+      const win = sessionWindow(id);
+      if (!win) continue;
+      const maximized = win.isMaximized();
+      const minimized = win.isMinimized();
+      // getNormalBounds is a few pixels out for a frameless window that is
+      // neither, so it is only used when the window is not at its normal size.
+      placements[id] = {
+        bounds: maximized || minimized ? win.getNormalBounds() : win.getBounds(),
+        maximized,
+        minimized,
+      };
+    }
+    return placements;
+  }
+
+  // Lays the windows out, in the order given, across the display's work
+  // area; the Bridge's display when none is named. A full-screen window is
+  // left where it is (macOS will not move one). Returns where they were.
+  function tileSessions(ids, displayId, options) {
+    const displays = screen.getAllDisplays();
+    const display =
+      displays.find((candidate) => String(candidate.id) === String(displayId)) ??
+      (bridge && !bridge.isDestroyed() ? screen.getDisplayMatching(bridge.getBounds()) : screen.getPrimaryDisplay());
+    const tiled = ids.filter((id) => sessionWindow(id) && !sessionWindow(id).isFullScreen());
+    const before = captureSessions(tiled);
+    const rects = tileRects(tiled.length, display.workArea, options);
+    tiled.forEach((id, i) => {
+      const win = sessionWindow(id);
+      if (win.isMinimized()) win.restore();
+      if (win.isMaximized()) win.unmaximize();
+      placeWindow(win, rects[i]);
+    });
+    return before;
+  }
+
+  function restoreSessions(placements) {
+    for (const [id, { bounds, maximized, minimized }] of Object.entries(placements)) {
+      const win = sessionWindow(id);
+      if (!win || win.isFullScreen()) continue;
+      if (win.isMinimized()) win.restore();
+      if (win.isMaximized()) win.unmaximize();
+      if (!maximized && !minimized) {
+        placeWindow(win, bounds);
+        continue;
+      }
+      // placeWindow settles asynchronously and would undo the maximise, so
+      // these only get their normal bounds back for when they are restored.
+      win.setBounds(bounds);
+      if (maximized) win.maximize();
+      if (minimized) win.minimize();
+    }
   }
 
   function centerSession(id) {
@@ -327,6 +390,9 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     focusSession,
     centerSession,
     bringSessionHere,
+    captureSessions,
+    tileSessions,
+    restoreSessions,
     closeSessionWindow,
     isSessionFocused,
     flashSession,
