@@ -9,10 +9,10 @@ function matches(haystack, needle) {
 
 // Everything the palette can jump to: a session (by name, folder, any
 // prompt it has run), an external session, or a profile to launch.
-function buildIndex(state) {
+export function buildIndex(state) {
   const items = [];
   for (const session of state.sessions) {
-    const prompts = (session.activity ?? []).map((turn) => turn.prompt);
+    const prompts = (session.activity?.turns ?? []).map((turn) => turn.prompt);
     items.push({
       key: `session:${session.id}`,
       kind: "Session",
