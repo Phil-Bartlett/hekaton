@@ -10,6 +10,7 @@
   },
   "license": "MIT",
   "main": "dist/main.cjs",
+  "desktopName": "hekaton.desktop",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",

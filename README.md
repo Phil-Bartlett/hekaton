@@ -41,6 +41,26 @@ Sessions started outside Hekaton appear too, read from Claude Code's own session
   recency, as tiles, compact tiles or a list.
 - Cost: the activity tray shows a whole-session estimate from the price table beside Claude's own
   reported figure, each labelled for what it is.
+- Arranging: Tile lays the live session windows out as a grid, columns, rows or a main window beside a
+  stack, on any display; Undo puts them back. Named layouts save where every window sits and reapply
+  it later.
+
+## Omarchy and Hyprland
+
+Under Hyprland (Omarchy's compositor) Hekaton cannot place its own windows: Wayland gives a window no
+say in where it goes, and Electron reports the size it asked for rather than the real one. When
+`HYPRLAND_INSTANCE_SIGNATURE` is set, Hekaton reads and moves its windows through Hyprland's control
+socket instead (`src/main/hyprland.js`):
+
+- New windows open wherever Hyprland tiles them. Tile, Centre, Bring Here and named layouts float the
+  windows they move; Undo, and a layout saved while windows were tiled, hand them back to the tiler.
+- Pin uses Hyprland's own pin, and the profile colour becomes the window's Hyprland border.
+- Hyprland draws the frame and owns moving, resizing and closing, so there are no caption buttons and
+  windows have no minimum size; the Bridge and the session title bars fit narrow tiles.
+- Minimise is not offered: Hyprland has none.
+
+Other Wayland compositors (Sway, GNOME, KDE) have the same placement limit and no adapter yet; there
+the windows open and work but the placement commands do nothing.
 
 ## Running it
 
