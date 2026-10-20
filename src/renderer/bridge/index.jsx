@@ -10,6 +10,7 @@ import ProfilesRail from "./ProfilesRail.jsx";
 import ReferenceDialog from "./ReferenceDialog.jsx";
 import SessionCard, { DormantCard, ExternalSessionCard } from "./SessionCard.jsx";
 import SettingsView from "./SettingsView.jsx";
+import UpdateBadge from "./UpdateBadge.jsx";
 import UsagePanel from "./UsagePanel.jsx";
 import { TILE_LAYOUT_LABELS, liveCard, orderCards, projectOf } from "./cards.js";
 import CaptionButtons from "../shared/CaptionButtons.jsx";
@@ -414,7 +415,9 @@ function App() {
       />
     ),
     profile: <ProfileEditor profile={view.profile} displays={state.displays} onClose={closeView} />,
-    settings: <SettingsView settings={state.settings} dataFolder={state.dataFolder} onClose={closeView} />,
+    settings: (
+      <SettingsView settings={state.settings} dataFolder={state.dataFolder} update={state.update} onClose={closeView} />
+    ),
   }[view.name];
 
   return (
@@ -422,6 +425,7 @@ function App() {
       <header className="title-bar">
         <span className="title-bar__name">Hekaton</span>
         <span className="title-bar__tools">
+          <UpdateBadge update={state.update} />
           <button
             type="button"
             className="title-bar__control"

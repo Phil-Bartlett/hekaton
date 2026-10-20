@@ -34,6 +34,30 @@
   color: var(--fg);
 }
 
+.update-badge {
+  align-self: center;
+  margin-right: 8px;
+  padding: 2px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--control);
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.update-badge--action {
+  border-color: #22c55e;
+  background: #166534;
+  color: #fff;
+  cursor: pointer;
+}
+
+.update-badge--action:hover {
+  background: #15803d;
+}
+
 /* ---- Tabs (Settings, Reference) ------------------------------------------ */
 
 .tabs {

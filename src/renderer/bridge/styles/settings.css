@@ -102,3 +102,17 @@
   background: var(--bg-elevated);
   border-radius: 6px;
 }
+
+/* A line of status beside its button (Updates). */
+.field__row--centred {
+  align-items: center;
+}
+
+.field__row--centred > .field__hint {
+  flex: 1;
+  margin-top: 0;
+}
+
+.settings__body .field__row--centred > button {
+  align-self: center;
+}

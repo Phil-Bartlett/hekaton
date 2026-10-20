@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { updateStatusText } from "./UpdateBadge.jsx";
 import { STATUS_STATES } from "../shared/statusStates.js";
 import { THEMES, applyTheme, resolveTheme, themeIssues } from "../shared/themes.js";
 
@@ -39,7 +40,38 @@ function Swatches({ theme }) {
   );
 }
 
-function GeneralTab({ draft, patch, hotkeyError }) {
+// The switch is saved with the rest of Settings; Check now acts at once.
+function UpdatesField({ draft, patch, update }) {
+  return (
+    <div className="field">
+      <span>Updates</span>
+      <span className="field--flags">
+        <label>
+          <input
+            type="checkbox"
+            checked={draft.autoUpdate !== false}
+            onChange={(event) => patch({ autoUpdate: event.target.checked })}
+          />{" "}
+          Check for updates automatically and download them in the background
+        </label>
+      </span>
+      <span className="field__row field__row--centred">
+        <span className="field__hint" role="status">
+          Version {update.current}. {updateStatusText(update)}
+        </span>
+        <button
+          type="button"
+          disabled={update.mode === "off" || update.status === "checking"}
+          onClick={() => window.hekaton.bridge.checkForUpdates()}
+        >
+          Check now
+        </button>
+      </span>
+    </div>
+  );
+}
+
+function GeneralTab({ draft, patch, hotkeyError, update }) {
   const { tiling } = draft;
   return (
     <>
@@ -113,6 +145,7 @@ function GeneralTab({ draft, patch, hotkeyError }) {
         />
         <span className="field__hint">Space left between windows, and around them, when the Bridge tiles them.</span>
       </label>
+      {update && <UpdatesField draft={draft} patch={patch} update={update} />}
     </>
   );
 }
@@ -358,7 +391,7 @@ function ThemeTab({ draft, patch }) {
   );
 }
 
-export default function SettingsView({ settings, dataFolder, onClose }) {
+export default function SettingsView({ settings, dataFolder, update, onClose }) {
   const [tab, setTab] = useState("general");
   const [draft, setDraft] = useState(settings);
   const [hotkeyError, setHotkeyError] = useState(false);
@@ -384,7 +417,7 @@ export default function SettingsView({ settings, dataFolder, onClose }) {
   }
 
   const body = {
-    general: <GeneralTab draft={draft} patch={patch} hotkeyError={hotkeyError} />,
+    general: <GeneralTab draft={draft} patch={patch} hotkeyError={hotkeyError} update={update} />,
     terminal: <TerminalTab draft={draft} patch={patch} />,
     status: <StatusTab draft={draft} patch={patch} />,
     paths: <PathsTab draft={draft} patch={patch} dataFolder={dataFolder} />,
