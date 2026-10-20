@@ -45,25 +45,29 @@ Sessions started outside Hekaton appear too, read from Claude Code's own session
   stack, on any display; Undo puts them back. Named layouts save where every window sits and reapply
   it later.
 
-## Omarchy and Hyprland
+## Omarchy, Hyprland and Sway
 
-Under Hyprland (Omarchy's compositor) Hekaton cannot place its own windows: Wayland gives a window no
-say in where it goes, and Electron reports the size it asked for rather than the real one. When
-`HYPRLAND_INSTANCE_SIGNATURE` is set, Hekaton reads and moves its windows through Hyprland's control
-socket instead (`src/main/hyprland.js`):
+Under a Wayland compositor Hekaton cannot place its own windows: Wayland gives a window no say in where
+it goes, and Electron reports the size it asked for rather than the real one. Under Hyprland (Omarchy's
+compositor, found by `HYPRLAND_INSTANCE_SIGNATURE`) or Sway (`SWAYSOCK`), Hekaton reads and moves its
+windows through the compositor's control socket instead (`src/main/hyprland.js`, `src/main/sway.js`):
 
-- New windows open wherever Hyprland tiles them. Tile, Centre, Bring Here and named layouts float the
-  windows they move; Undo, and a layout saved while windows were tiled, hand them back to the tiler.
-- Pin uses Hyprland's own pin, and the profile colour becomes the window's Hyprland border.
-- Hyprland draws the frame and owns moving, resizing and closing, so there are no caption buttons and
-  windows have no minimum size; the Bridge and the session title bars fit narrow tiles.
-- Minimise is not offered: Hyprland has none.
+- New windows open wherever the compositor tiles them. Tile, Centre, Bring Here and named layouts float
+  the windows they move; Undo, and a layout saved while windows were tiled, hand them back to the tiler.
+- Pin uses Hyprland's pin or Sway's sticky. Under Hyprland the profile colour becomes the window's
+  border; Sway cannot colour one window's border, so there the accent frame stays.
+- The compositor owns moving, resizing and closing, so there are no caption buttons and windows have
+  no minimum size; the Bridge and the session title bars fit narrow tiles.
+- The global hotkey is bound in the compositor, because Electron's shortcuts never fire on Wayland. It
+  relaunches Hekaton, which raises the running Bridge, so the same keys also start Hekaton. The binding
+  lasts until the compositor restarts.
+- Minimise is not offered: neither compositor has one.
 
 Omarchy ships FUSE 3 only, and an AppImage needs `libfuse.so.2`: install it with `sudo pacman -S fuse2`,
 or run the AppImage with `APPIMAGE_EXTRACT_AND_RUN=1` set.
 
-Other Wayland compositors (Sway, GNOME, KDE) have the same placement limit and no adapter yet; there
-the windows open and work but the placement commands do nothing.
+GNOME and KDE on Wayland have the same placement limit and no adapter; there the windows open and
+work, but the placement commands and the global hotkey do nothing.
 
 ## Running it
 
