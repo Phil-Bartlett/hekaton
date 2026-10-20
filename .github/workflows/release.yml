@@ -6,6 +6,9 @@ name: Release
 # (workflow_dispatch) builds only the mac dmg as an artifact, to try it
 # without cutting a release; the Windows and Linux legs and the release
 # itself run on a tag, where CI has already proven those two platforms.
+# Each release also carries the update descriptions the installed app reads
+# (latest.yml for Windows, latest-linux.yml for the AppImage) and the
+# installer's block map, which lets an update download only what changed.
 on:
   push:
     tags: ["v*"]
@@ -38,7 +41,10 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: hekaton-windows
-          path: out/Hekaton-Setup-*.exe
+          path: |
+            out/Hekaton-Setup-*.exe
+            out/Hekaton-Setup-*.exe.blockmap
+            out/latest.yml
           if-no-files-found: error
 
   package-linux:
@@ -67,6 +73,7 @@ jobs:
           path: |
             out/Hekaton-*.AppImage
             out/Hekaton-*.deb
+            out/latest-linux.yml
           if-no-files-found: error
 
   package-mac:
