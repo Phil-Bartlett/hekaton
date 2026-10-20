@@ -1,6 +1,6 @@
 {
   "name": "hekaton",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Hekaton \u2014 a window manager and live dashboard for many Claude Code sessions",
   "homepage": "https://github.com/Phil-Bartlett/hekaton",
