@@ -270,8 +270,8 @@ function forgetSession(id) {
 
 // The global hotkey raises the Bridge from anywhere; an invalid accelerator
 // is reported back to Settings rather than silently ignored. On Wayland
-// Electron's shortcuts register but never fire, so under Hyprland the
-// compositor binds the keys to relaunch Hekaton, which raises the Bridge.
+// Electron's shortcuts register but never fire, so under Hyprland or Sway
+// the compositor binds the keys to relaunch Hekaton, which raises the Bridge.
 function applyHotkey(accelerator) {
   globalShortcut.unregisterAll();
   if (windows.compositor) return windows.compositor.setHotkey(accelerator, relaunchCommand());

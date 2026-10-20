@@ -2,6 +2,7 @@ import { BrowserWindow, dialog, screen } from "electron";
 import path from "node:path";
 import { CH } from "../shared/channels.js";
 import { createHyprland, displayMatching } from "./hyprland.js";
+import { createSway } from "./sway.js";
 import { MIN_HEIGHT, MIN_WIDTH } from "./placement.js";
 import { IS_WINDOWS, titleBarOptions } from "./platform.js";
 import { tileRects } from "./tiling.js";
@@ -69,32 +70,33 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
   const chromeState = new Map();
   let bridge = null;
 
-  // Under Hyprland every window is read and placed through the compositor.
-  // A session window opens under a title naming its session, so the
-  // compositor's record of it can be found, and takes its real title once
+  // Under Hyprland or Sway every window is read and placed through the
+  // compositor. A session window opens under a title naming its session, so
+  // the compositor's record of it can be found, and takes its real title once
   // that record has been seen.
-  const hyprland = createHyprland({ onChange: () => hyprlandChanged() });
+  const onChange = () => compositorChanged();
+  const compositor = createHyprland({ onChange }) ?? createSway({ onChange });
   const openingTitles = new Map();
-  const hyprlandSessions = new Map();
+  const compositorSessions = new Map();
   let lastBridgeBounds = null;
 
-  function hyprlandChanged() {
-    for (const [id, entry] of hyprlandSessions) {
-      const state = hyprland.window(entry.openingTitle);
+  function compositorChanged() {
+    for (const [id, entry] of compositorSessions) {
+      const state = compositor.window(entry.openingTitle);
       const win = sessionWindow(id);
       if (!state || !win) continue;
       if (!entry.seen) {
         entry.seen = true;
         win.setTitle(entry.title);
-        if (entry.accent) hyprland.border(entry.openingTitle, entry.accent);
-        if (chromeFor(win).pinned) hyprland.pin(entry.openingTitle, true);
+        if (entry.accent) compositor.border(entry.openingTitle, entry.accent);
+        if (chromeFor(win).pinned) compositor.pin(entry.openingTitle, true);
       }
       if (!sameBounds(state.bounds, entry.bounds)) {
         entry.bounds = state.bounds;
         onSessionBounds(id);
       }
     }
-    const bridgeBounds = hyprland.window(BRIDGE_TITLE)?.bounds;
+    const bridgeBounds = compositor.window(BRIDGE_TITLE)?.bounds;
     if (bridgeBounds && !sameBounds(bridgeBounds, lastBridgeBounds)) {
       lastBridgeBounds = bridgeBounds;
       onBridgeBounds(bridgeBounds);
@@ -102,16 +104,16 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
   }
 
   function listDisplays() {
-    const fromHyprland = hyprland?.displays() ?? [];
-    return fromHyprland.length > 0 ? fromHyprland : electronDisplays();
+    const fromCompositor = compositor?.displays() ?? [];
+    return fromCompositor.length > 0 ? fromCompositor : electronDisplays();
   }
 
   function displayFor(rect) {
-    return hyprland ? displayMatching(listDisplays(), rect) : screen.getDisplayMatching(rect);
+    return compositor ? displayMatching(listDisplays(), rect) : screen.getDisplayMatching(rect);
   }
 
   function primaryDisplay() {
-    return hyprland ? listDisplays().find((display) => display.primary) : screen.getPrimaryDisplay();
+    return compositor ? listDisplays().find((display) => display.primary) : screen.getPrimaryDisplay();
   }
 
   // Saved bounds are only trusted when a decent slice of the window would
@@ -126,25 +128,26 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     return visible ? bounds : null;
   }
 
-  // Electron's own bounds are what was last asked for under Hyprland, so the
-  // compositor's are used there; null until it has mapped the window.
+  // Electron's own bounds are what was last asked for under a Wayland
+  // compositor, so the compositor's are used there; null until it has
+  // mapped the window.
   function boundsOf(win) {
-    return hyprland ? (hyprland.window(openingTitles.get(win.id))?.bounds ?? null) : win.getBounds();
+    return compositor ? (compositor.window(openingTitles.get(win.id))?.bounds ?? null) : win.getBounds();
   }
 
-  function hyprlandState(win) {
-    return hyprland?.window(openingTitles.get(win.id)) ?? null;
+  function compositorState(win) {
+    return compositor?.window(openingTitles.get(win.id)) ?? null;
   }
 
   function isFullScreen(win) {
-    return hyprland ? hyprlandState(win)?.fullscreen === true : win.isFullScreen();
+    return compositor ? compositorState(win)?.fullscreen === true : win.isFullScreen();
   }
 
-  // Hyprland sizes windows without regard to their minimum, and Electron then
+  // A tiling compositor sizes windows without regard to their minimum, and Electron then
   // lays the page out at the minimum and lets the compositor crop it, so
   // there the page has to fit whatever it is given.
   function minimumSize(width, height) {
-    return hyprland ? {} : { minWidth: width, minHeight: height };
+    return compositor ? {} : { minWidth: width, minHeight: height };
   }
 
   function chromeFor(win) {
@@ -175,7 +178,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
       showBridge();
       return bridge;
     }
-    hyprland?.start();
+    compositor?.start();
     bridge = new BrowserWindow({
       ...(boundsOnScreen(savedBounds) ?? { width: 1180, height: 830 }),
       ...minimumSize(720, 480),
@@ -191,7 +194,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     });
     const bridgeMoved = throttled(() => {
       if (!bridge || bridge.isDestroyed()) return;
-      if (hyprland) hyprland.refresh();
+      if (compositor) compositor.refresh();
       else if (!bridge.isMinimized()) onBridgeBounds(bridge.getBounds());
     });
     bridge.on("move", bridgeMoved);
@@ -212,7 +215,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
   function trackBounds(win, id) {
     const changed = throttled(() => {
       if (win.isDestroyed()) return;
-      if (hyprland) hyprland.refresh();
+      if (compositor) compositor.refresh();
       else if (!win.isMinimized()) onSessionBounds(id);
     });
     win.on("move", changed);
@@ -220,8 +223,8 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
   }
 
   function createSessionWindow(session, bounds, { pinned = false } = {}) {
-    hyprland?.start();
-    const openingTitle = hyprland ? `Hekaton session ${session.id}` : session.profile.name;
+    compositor?.start();
+    const openingTitle = compositor ? `Hekaton session ${session.id}` : session.profile.name;
     const win = new BrowserWindow({
       ...bounds,
       ...minimumSize(MIN_WIDTH, MIN_HEIGHT),
@@ -234,9 +237,9 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     });
     sessionWindows.set(session.id, win);
     openingTitles.set(win.id, openingTitle);
-    if (hyprland) {
+    if (compositor) {
       const colourScope = session.profile.colorScope ?? "border+title";
-      hyprlandSessions.set(session.id, {
+      compositorSessions.set(session.id, {
         openingTitle,
         title: session.profile.name,
         accent: colourScope.includes("border") ? session.profile.accent : null,
@@ -246,7 +249,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     }
     win.on("closed", () => {
       sessionWindows.delete(session.id);
-      hyprlandSessions.delete(session.id);
+      compositorSessions.delete(session.id);
     });
     // Keep the OS-level title as the profile name; the page's <title> is not it.
     win.on("page-title-updated", (event) => event.preventDefault());
@@ -271,8 +274,8 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     trackChrome(win);
     trackBounds(win, session.id);
     if (session.profile.alwaysOnTop || pinned) {
-      // Hyprland pins the window once it has been mapped.
-      if (!hyprland) win.setAlwaysOnTop(true);
+      // A compositor pins the window once it has been mapped.
+      if (!compositor) win.setAlwaysOnTop(true);
       chromeFor(win).pinned = true;
     }
     forwardConsole(win, session.profile.name);
@@ -282,7 +285,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
 
   function sessionBounds(id) {
     const win = sessionWindow(id);
-    if (!win || (!hyprland && win.isMinimized())) return null;
+    if (!win || (!compositor && win.isMinimized())) return null;
     return boundsOf(win);
   }
 
@@ -296,7 +299,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
   function setSessionTitle(id, title) {
     const win = sessionWindow(id);
     if (!win) return;
-    const entry = hyprlandSessions.get(id);
+    const entry = compositorSessions.get(id);
     if (entry) entry.title = title;
     if (entry && !entry.seen) return;
     if (win.getTitle() !== title) win.setTitle(title);
@@ -330,6 +333,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     if (win.isMinimized()) win.restore();
     win.show();
     win.focus();
+    compositor?.focus(openingTitles.get(win.id));
   }
 
   // The size is applied in a second step: Electron scales a bounds call by
@@ -337,8 +341,8 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
   // again on arrival, so a single call lands at the wrong size when the two
   // displays differ.
   function placeWindow(win, target) {
-    if (hyprland) {
-      hyprland.place(openingTitles.get(win.id), target);
+    if (compositor) {
+      compositor.place(openingTitles.get(win.id), target);
       return;
     }
     win.setPosition(target.x, target.y);
@@ -368,15 +372,15 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     placeWindow(win, { x, y, width, height });
   }
 
-  // Where each window is now, in a form restoreSessions can put back. Under
-  // Hyprland that includes whether the compositor was tiling it.
+  // Where each window is now, in a form restoreSessions can put back. Under a
+  // compositor that includes whether it was tiling the window.
   function captureSessions(ids) {
     const placements = {};
     for (const id of ids) {
       const win = sessionWindow(id);
       if (!win) continue;
-      if (hyprland) {
-        const state = hyprlandState(win);
+      if (compositor) {
+        const state = compositorState(win);
         if (state)
           placements[id] = { bounds: state.bounds, maximized: false, minimized: false, floating: state.floating };
         continue;
@@ -409,7 +413,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     const rects = tileRects(tiled.length, display.workArea, options);
     tiled.forEach((id, i) => {
       const win = sessionWindow(id);
-      if (!hyprland) {
+      if (!compositor) {
         if (win.isMinimized()) win.restore();
         if (win.isMaximized()) win.unmaximize();
       }
@@ -422,8 +426,8 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     for (const [id, { bounds, maximized, minimized, floating }] of Object.entries(placements)) {
       const win = sessionWindow(id);
       if (!win || isFullScreen(win)) continue;
-      if (hyprland) {
-        if (floating === false) hyprland.tile(openingTitles.get(win.id));
+      if (compositor) {
+        if (floating === false) compositor.tile(openingTitles.get(win.id));
         else placeWindow(win, bounds);
         continue;
       }
@@ -477,7 +481,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
   function pinSession(id, pinned) {
     const win = sessionWindow(id);
     if (!win) return;
-    if (hyprland) hyprland.pin(openingTitles.get(win.id), pinned);
+    if (compositor) compositor.pin(openingTitles.get(win.id), pinned);
     else win.setAlwaysOnTop(pinned);
     chromeFor(win).pinned = pinned;
     pushChrome(win);
@@ -500,8 +504,8 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
   }
 
   return {
-    windowManager: hyprland ? "hyprland" : null,
-    compositor: hyprland,
+    windowManager: compositor?.name ?? null,
+    compositor,
     listDisplays,
     boundsOnScreen,
     createBridgeWindow,

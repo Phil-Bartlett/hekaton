@@ -225,6 +225,8 @@ export function createHyprland({ env = process.env, pid = process.pid, onChange 
     tile: (title) => act(title, tileCommands),
     pin: (title, pinned) => act(title, (address) => pinCommands(address, pinned)),
     border: (title, colour) => act(title, (address) => borderCommands(address, colour)),
+    // Hyprland honours a client asking for focus, so Electron's is enough.
+    focus: () => {},
     setHotkey,
   };
 }

@@ -8,6 +8,12 @@ import { parseAccelerator } from "./accelerator.js";
 
 // Moves and resizes are polled, as under Hyprland, rather than subscribed to.
 const POLL_MS = 1000;
+const SETTLE_MS = 150;
+const PLACE_ATTEMPTS = 4;
+
+function closeTo(bounds, rect) {
+  return bounds !== undefined && ["x", "y", "width", "height"].every((key) => Math.abs(bounds[key] - rect[key]) <= 1);
+}
 
 const MAGIC = "i3-ipc";
 const HEADER_BYTES = MAGIC.length + 8;
@@ -157,10 +163,16 @@ export function createSway({ env = process.env, pid = process.pid, onChange = ()
     refresh().catch((error) => console.error(`sway: ${error.message}`));
   }
 
-  async function run(command) {
-    const replies = await request(RUN_COMMAND, command);
-    const failures = replies.filter((reply) => !reply.success).map((reply) => reply.error);
-    if (failures.length > 0) throw new Error(failures.join("; "));
+  // Commands go to Sway one at a time, in the order they were asked for.
+  let queue = Promise.resolve();
+  function run(command) {
+    const sent = queue.then(async () => {
+      const replies = await request(RUN_COMMAND, command);
+      const failures = replies.filter((reply) => !reply.success).map((reply) => reply.error);
+      if (failures.length > 0) throw new Error(failures.join("; "));
+    });
+    queue = sent.catch(() => {});
+    return sent;
   }
 
   function lookup(title) {
@@ -178,6 +190,24 @@ export function createSway({ env = process.env, pid = process.pid, onChange = ()
     run(build(id))
       .then(refresh)
       .catch((error) => console.error(`sway: ${error.message}`));
+  }
+
+  // Floating one window makes Sway reflow the others while their clients are
+  // still answering earlier resizes, and a floating client's late answer
+  // wins, so a placement is checked and sent again until it holds.
+  async function placeUntilSettled(title, rect) {
+    for (let attempt = 0; attempt < PLACE_ATTEMPTS; attempt += 1) {
+      const id = lookup(title)?.id;
+      if (id === undefined) return;
+      await run(placeCommand(id, rect));
+      await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
+      await refresh();
+      if (closeTo(windows.get(id)?.bounds, rect)) return;
+    }
+  }
+
+  function place(title, rect) {
+    placeUntilSettled(title, rect).catch((error) => console.error(`sway: ${error.message}`));
   }
 
   // As under Hyprland: Sway binds the keys to run `command`, the binding
@@ -205,9 +235,11 @@ export function createSway({ env = process.env, pid = process.pid, onChange = ()
     refresh: refreshQuietly,
     displays: () => displays,
     window: lookup,
-    place: (title, rect) => act(title, (id) => placeCommand(id, rect)),
+    place,
     tile: (title) => act(title, tileCommand),
     pin: (title, pinned) => act(title, (id) => pinCommand(id, pinned)),
+    // Sway ignores a client asking for focus, so the compositor gives it.
+    focus: (title) => act(title, (id) => `${target(id)} focus`),
     border: () => {},
     setHotkey,
   };

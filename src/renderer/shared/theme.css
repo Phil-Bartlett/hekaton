@@ -52,18 +52,19 @@ body {
   border-top-width: 4px;
 }
 
-/* Hyprland borders the window in the profile colour itself, and moving,
-   resizing and closing are the compositor's, so neither the frame nor the
-   caption buttons are drawn there. */
+/* Under a tiling compositor (Hyprland, Sway) moving, resizing and closing
+   are the compositor's, so the caption buttons are not drawn. Hyprland also
+   borders the window in the profile colour itself, so the frame goes too;
+   Sway cannot, so there the frame stays. */
 :root[data-wm="hyprland"] #root {
   border: none;
 }
 
-:root[data-wm="hyprland"] .caption {
+:root[data-wm] .caption {
   display: none;
 }
 
-:root[data-wm="hyprland"] .title-bar {
+:root[data-wm] .title-bar {
   padding-right: 8px;
 }
 
