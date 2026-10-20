@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { writeJsonAtomic } from "./jsonFile.js";
 import { DEFAULT_GAP } from "./tiling.js";
 
 function readJson(file, fallback) {
@@ -9,13 +10,6 @@ function readJson(file, fallback) {
   } catch {
     return fallback;
   }
-}
-
-// Write-then-rename so a crash mid-write never leaves a truncated file.
-function writeJson(file, value) {
-  const tmp = `${file}.tmp`;
-  writeFileSync(tmp, JSON.stringify(value, null, 2));
-  renameSync(tmp, file);
 }
 
 export const DEFAULT_SETTINGS = Object.freeze({
@@ -47,7 +41,7 @@ export function createStore({ dir }) {
 
   function saveSettings(patch) {
     settings = { ...settings, ...patch };
-    writeJson(settingsFile, settings);
+    writeJsonAtomic(settingsFile, settings);
     return settings;
   }
 
@@ -57,13 +51,13 @@ export function createStore({ dir }) {
     const next = { ...profile, name, id: profile.id ?? randomUUID() };
     const index = profiles.findIndex((p) => p.id === next.id);
     profiles = index === -1 ? [...profiles, next] : profiles.map((p) => (p.id === next.id ? next : p));
-    writeJson(profilesFile, profiles);
+    writeJsonAtomic(profilesFile, profiles);
     return next;
   }
 
   function deleteProfile(id) {
     profiles = profiles.filter((p) => p.id !== id);
-    writeJson(profilesFile, profiles);
+    writeJsonAtomic(profilesFile, profiles);
   }
 
   function findProfile(idOrName) {

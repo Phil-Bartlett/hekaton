@@ -1,6 +1,7 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { writeJsonAtomic } from "./jsonFile.js";
 
 // Every session the Bridge has shown, running or not, so a relaunch of the
 // app brings the same cards back. A dormant entry carries enough to resume
@@ -9,6 +10,7 @@ import path from "node:path";
 
 const STATE_VERSION = 1;
 const SAVE_DELAY_MS = 300;
+const SAVE_RETRY_MS = 5000;
 
 export function summarise(session, { bounds = null, pinned = false, trayOpen = false } = {}) {
   const { profile, telemetry } = session;
@@ -61,15 +63,25 @@ export function createInstances({ file }) {
   function saveNow() {
     clearTimeout(timer);
     timer = null;
-    const tmp = `${file}.tmp`;
-    const state = { version: STATE_VERSION, bridge, order, instances: [...entries.values()] };
-    writeFileSync(tmp, JSON.stringify(state, null, 2));
-    renameSync(tmp, file);
+    writeJsonAtomic(file, { version: STATE_VERSION, bridge, order, instances: [...entries.values()] });
+  }
+
+  // A save that still fails after writeJsonAtomic's retries is tried again a
+  // little later rather than taking the app down; the cards stay in memory.
+  function scheduleSave(delay) {
+    timer = setTimeout(() => {
+      try {
+        saveNow();
+      } catch (error) {
+        console.error(`state.json not saved, retrying: ${error.message}`);
+        scheduleSave(SAVE_RETRY_MS);
+      }
+    }, delay);
   }
 
   function save() {
     if (timer) return;
-    timer = setTimeout(saveNow, SAVE_DELAY_MS);
+    scheduleSave(SAVE_DELAY_MS);
   }
 
   // A resumed session starts with empty telemetry; what the card already

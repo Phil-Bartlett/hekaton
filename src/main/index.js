@@ -378,7 +378,13 @@ function flushForQuit() {
     recordHistory(session);
     instances.markDormant(session.id, instanceSummary(session));
   }
-  instances.saveNow();
+  // Quitting cannot wait for a later retry; a failure here is only logged,
+  // and the cards keep their state from the last save that went through.
+  try {
+    instances.saveNow();
+  } catch (error) {
+    console.error(`state.json not saved on quit: ${error.message}`);
+  }
 }
 
 function terminateSession(id) {
