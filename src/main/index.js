@@ -21,7 +21,7 @@ import { startTelemetryServer } from "./telemetry.js";
 import { createTray } from "./tray.js";
 import { createUsage } from "./usage.js";
 import { iconPath, setLaunchAtLogin } from "./platform.js";
-import { boundsOnScreen, createWindowManager, listDisplays } from "./windows.js";
+import { createWindowManager } from "./windows.js";
 
 // xterm's ConPTY quirk handling is keyed on the Windows build number.
 const OS_BUILD = Number(os.release().split(".")[2]) || 0;
@@ -188,7 +188,8 @@ function snapshot() {
     platform: process.platform,
     fx: fx.current(),
     usage: usage.current(),
-    displays: listDisplays(),
+    displays: windows.listDisplays(),
+    windowManager: windows.windowManager,
     settings: store.settings(),
     dataFolder: { path: dataDir.dir, isDefault: dataDir.isDefault },
     profiles: store.profiles(),
@@ -303,7 +304,7 @@ function launchProfile(profile, { id, bounds, pinned, trayOpen } = {}) {
     reportLaunchFailure(profile, error);
     return null;
   }
-  const placement = boundsOnScreen(bounds) ?? computeBounds(profile, listDisplays());
+  const placement = windows.boundsOnScreen(bounds) ?? computeBounds(profile, windows.listDisplays());
   const win = windows.createSessionWindow(session, placement, { pinned });
   win.on("closed", () => {
     forgetSession(session.id);
@@ -410,6 +411,7 @@ ipcMain.handle(CH.sessionGet, (event, id) =>
         ...sessions.get(id),
         osBuild: OS_BUILD,
         platform: process.platform,
+        windowManager: windows.windowManager,
         chrome: windows.sessionChrome(id),
         fx: fx.current(),
         settings: store.settings(),
@@ -517,7 +519,7 @@ function applyLayout(id) {
   if (!layout) return;
   const placements = Object.fromEntries(
     Object.entries(layout.placements).filter(
-      ([cardId, placement]) => windows.sessionWindow(cardId) && boundsOnScreen(placement.bounds),
+      ([cardId, placement]) => windows.sessionWindow(cardId) && windows.boundsOnScreen(placement.bounds),
     ),
   );
   if (Object.keys(placements).length === 0) return;
