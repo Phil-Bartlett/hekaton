@@ -140,6 +140,13 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     return hyprland ? hyprlandState(win)?.fullscreen === true : win.isFullScreen();
   }
 
+  // Hyprland sizes windows without regard to their minimum, and Electron then
+  // lays the page out at the minimum and lets the compositor crop it, so
+  // there the page has to fit whatever it is given.
+  function minimumSize(width, height) {
+    return hyprland ? {} : { minWidth: width, minHeight: height };
+  }
+
   function chromeFor(win) {
     if (!chromeState.has(win.id)) chromeState.set(win.id, { pinned: false, locked: false, maximized: false });
     return chromeState.get(win.id);
@@ -171,8 +178,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     hyprland?.start();
     bridge = new BrowserWindow({
       ...(boundsOnScreen(savedBounds) ?? { width: 1180, height: 830 }),
-      minWidth: 720,
-      minHeight: 480,
+      ...minimumSize(720, 480),
       backgroundColor: BACKGROUND,
       title: BRIDGE_TITLE,
       ...titleBarOptions({ height: TITLE_BAR_HEIGHT }),
@@ -218,8 +224,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     const openingTitle = hyprland ? `Hekaton session ${session.id}` : session.profile.name;
     const win = new BrowserWindow({
       ...bounds,
-      minWidth: MIN_WIDTH,
-      minHeight: MIN_HEIGHT,
+      ...minimumSize(MIN_WIDTH, MIN_HEIGHT),
       backgroundColor: BACKGROUND,
       title: openingTitle,
       // Square corners so the accent frame meets at the corners on Windows 11.

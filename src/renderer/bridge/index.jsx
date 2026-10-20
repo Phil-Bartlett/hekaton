@@ -398,6 +398,7 @@ function App() {
   useEffect(() => {
     if (!state) return;
     document.documentElement.dataset.platform = state.platform;
+    if (state.windowManager) document.documentElement.dataset.wm = state.windowManager;
     applyTheme(resolveTheme(state.settings.theme, state.settings.customThemes));
   }, [state]);
 

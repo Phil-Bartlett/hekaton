@@ -58,6 +58,7 @@ export default function App() {
     if (!session) return;
     root.style.setProperty("--accent", session.profile.accent ?? DEFAULT_ACCENT);
     root.dataset.platform = session.platform;
+    if (session.windowManager) root.dataset.wm = session.windowManager;
     root.dataset.colorScope = session.profile.colorScope ?? "border+title";
     applyTheme(resolveTheme(session.settings?.theme, session.settings?.customThemes));
   }, [session]);
