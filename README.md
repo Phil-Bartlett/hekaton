@@ -45,7 +45,7 @@ Sessions started outside Hekaton appear too, read from Claude Code's own session
   stack, on any display; Undo puts them back. Named layouts save where every window sits and reapply
   it later.
 
-## Omarchy, Hyprland and Sway
+## Omarchy, Hyprland, Sway and KDE Plasma
 
 Under a Wayland compositor Hekaton cannot place its own windows: Wayland gives a window no say in where
 it goes, and Electron reports the size it asked for rather than the real one. Under Hyprland (Omarchy's
@@ -66,8 +66,16 @@ windows through the compositor's control socket instead (`src/main/hyprland.js`,
 Omarchy ships FUSE 3 only, and an AppImage needs `libfuse.so.2`: install it with `sudo pacman -S fuse2`,
 or run the AppImage with `APPIMAGE_EXTRACT_AND_RUN=1` set.
 
-GNOME and KDE on Wayland have the same placement limit and no adapter; there the windows open and
-work, but the placement commands and the global hotkey do nothing.
+Under KDE Plasma on Wayland (`XDG_CURRENT_DESKTOP` includes `KDE`), Hekaton drives KWin with KWin
+scripts loaded over D-Bus (`src/main/kwin.js`): a long-lived script reports Hekaton's windows and each
+screen's work area whenever they change, and short ones place, pin and focus a window. KWin floats
+windows, honours minimum sizes and draws no frame for Hekaton's frameless windows, so there Hekaton keeps
+its caption buttons, minimum sizes and accent frame; Pin is KWin's keep-above. The hotkey is a KDE
+global shortcut, listed in System Settings as "Hekaton: raise the Bridge (keys)", that raises the Bridge
+while Hekaton is running.
+
+GNOME on Wayland has the same placement limit and no adapter; there the windows open and work, but the
+placement commands and the global hotkey do nothing.
 
 ## Running it
 
