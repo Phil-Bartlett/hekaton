@@ -59,6 +59,9 @@ socket instead (`src/main/hyprland.js`):
   windows have no minimum size; the Bridge and the session title bars fit narrow tiles.
 - Minimise is not offered: Hyprland has none.
 
+Omarchy ships FUSE 3 only, and an AppImage needs `libfuse.so.2`: install it with `sudo pacman -S fuse2`,
+or run the AppImage with `APPIMAGE_EXTRACT_AND_RUN=1` set.
+
 Other Wayland compositors (Sway, GNOME, KDE) have the same placement limit and no adapter yet; there
 the windows open and work but the placement commands do nothing.
 
