@@ -5,6 +5,7 @@
 
 import net from "node:net";
 import path from "node:path";
+import { parseAccelerator } from "./accelerator.js";
 
 // Moves and resizes raise no socket event, so the window list is polled.
 const POLL_MS = 1000;
@@ -118,51 +119,11 @@ export function batch(commands) {
   return `[[BATCH]]${commands.map((command) => `dispatch ${command}`).join(";")}`;
 }
 
-const KEY_MODIFIERS = {
-  control: "CTRL",
-  ctrl: "CTRL",
-  commandorcontrol: "CTRL",
-  cmdorctrl: "CTRL",
-  alt: "ALT",
-  option: "ALT",
-  shift: "SHIFT",
-  super: "SUPER",
-  meta: "SUPER",
-  command: "SUPER",
-  cmd: "SUPER",
-};
-
-// Electron's names for keys that are not a single character, as xkb keysyms.
-const NAMED_KEYS = {
-  space: "space",
-  enter: "Return",
-  return: "Return",
-  tab: "Tab",
-  escape: "Escape",
-  esc: "Escape",
-  backspace: "BackSpace",
-  delete: "Delete",
-  home: "Home",
-  end: "End",
-  pageup: "Prior",
-  pagedown: "Next",
-  up: "Up",
-  down: "Down",
-  left: "Left",
-  right: "Right",
-};
-
 // An Electron accelerator ("Control+Alt+H") in Hyprland's bind syntax
 // ("CTRL + ALT + H"), or null for one it cannot express.
 export function hyprlandKeys(accelerator) {
-  const parts = String(accelerator ?? "")
-    .split("+")
-    .map((part) => part.trim());
-  const key = parts.pop();
-  const modifiers = parts.map((part) => KEY_MODIFIERS[part.toLowerCase()]);
-  if (modifiers.some((modifier) => !modifier)) return null;
-  const name = /^([a-z0-9]|f([1-9]|1[0-9]|2[0-4]))$/i.test(key) ? key.toUpperCase() : NAMED_KEYS[key.toLowerCase()];
-  return name ? [...new Set(modifiers), name].join(" + ") : null;
+  const parsed = parseAccelerator(accelerator);
+  return parsed ? [...parsed.modifiers.map((modifier) => modifier.toUpperCase()), parsed.key].join(" + ") : null;
 }
 
 function luaString(text) {
@@ -251,6 +212,7 @@ export function createHyprland({ env = process.env, pid = process.pid, onChange 
   }
 
   return {
+    name: "hyprland",
     start() {
       if (polling) return;
       refreshQuietly();
