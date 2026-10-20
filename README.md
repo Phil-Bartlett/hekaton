@@ -92,7 +92,14 @@ npm run style:record -- after.json      # on the code after it
 npm run style:compare -- before.json after.json
 ```
 
-`compare` lists each element whose style changed, by view, and exits non-zero if any did.
+`compare` lists each element whose style changed, by view, and exits non-zero if any did. The
+fixture includes the machine's displays (the monitor map, the profile editor's display list), so
+compare recordings made with the same monitors connected.
+
+Every pull request runs the same check in CI (`.github/workflows/style.yml`): it records the base and
+the pull request on one runner and fails if any element's style differs. When a change is meant to
+move something, add the `style-change` label; the report stays in the job summary and the check
+passes.
 
 ## Packages
 

@@ -9,15 +9,21 @@
 // `record` starts its own Hekaton against a fixed fixture in a temporary
 // folder, with Claude's own folder pointed at an empty one, so nothing on
 // this machine (live sessions, conversations, saved cards) reaches the page.
+//
+// It records the checkout it is run from, with that checkout's Electron, so
+// CI can record a pull request's base with the pull request's copy of this
+// script.
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import electron from "electron";
 
-const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const root = process.cwd();
+// A Linux CI runner has no setuid sandbox helper, and the page under test is
+// Hekaton's own.
+const PLATFORM_ARGS = process.platform === "linux" ? ["--no-sandbox"] : [];
 const WIDTHS = [1180, 800, 640];
 const HEIGHT = 830;
 // Text that changes by itself (elapsed time) changes its element's size.
@@ -204,10 +210,12 @@ async function walkViews({ send, evaluate }) {
 }
 
 async function recordStyles(out) {
+  // Only recording needs Electron; comparing runs anywhere.
+  const electron = createRequire(path.join(root, "package.json"))("electron");
   const dir = path.join(os.tmpdir(), "hekaton-style-check");
   seed(dir);
   const port = await freePort();
-  const app = spawn(electron, [".", `--user-data-dir=${dir}`, `--remote-debugging-port=${port}`], {
+  const app = spawn(electron, [".", ...PLATFORM_ARGS, `--user-data-dir=${dir}`, `--remote-debugging-port=${port}`], {
     cwd: root,
     env: { ...process.env, CLAUDE_CONFIG_DIR: path.join(dir, "claude") },
     stdio: "ignore",
@@ -243,12 +251,19 @@ function compareStyles(before, after) {
   return changed === 0;
 }
 
+// Exit 1 means styles changed and nothing else; any failure of the check
+// itself exits 2, so CI can tell the two apart.
 const [command, ...files] = process.argv.slice(2);
-if (command === "record" && files.length === 1) {
-  await recordStyles(files[0]);
-} else if (command === "compare" && files.length === 2) {
-  process.exitCode = compareStyles(...files) ? 0 : 1;
-} else {
-  console.error("usage: style-check.mjs record <file.json> | compare <before.json> <after.json>");
+try {
+  if (command === "record" && files.length === 1) {
+    await recordStyles(files[0]);
+  } else if (command === "compare" && files.length === 2) {
+    process.exitCode = compareStyles(...files) ? 0 : 1;
+  } else {
+    console.error("usage: style-check.mjs record <file.json> | compare <before.json> <after.json>");
+    process.exitCode = 2;
+  }
+} catch (error) {
+  console.error(error);
   process.exitCode = 2;
 }
