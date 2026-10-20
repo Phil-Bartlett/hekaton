@@ -19,6 +19,8 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
+    "style:record": "node scripts/build.mjs && node scripts/style-check.mjs record",
+    "style:compare": "node scripts/style-check.mjs compare",
     "rebuild": "electron-rebuild -f -w node-pty",
     "dist": "node scripts/build.mjs && electron-builder --publish never --win nsis",
     "dist:mac": "node scripts/build.mjs && electron-builder --publish never --mac dmg --arm64 --x64",

@@ -79,6 +79,21 @@ npm start
 Windows 11 first; the platform-specific bits (binary path, window chrome, ConPTY option) live in
 `src/main/platform.js`.
 
+### Checking a CSS change
+
+Two rules of equal specificity swap winners silently when rules or files are reordered. The style
+check records the computed style of every element the Bridge draws, in each of its views at 1180,
+800 and 640 px, against a fixed fixture (nothing from the machine's own Claude sessions), so a change
+can be shown to touch only what it meant to:
+
+```
+npm run style:record -- before.json     # on the code before the change
+npm run style:record -- after.json      # on the code after it
+npm run style:compare -- before.json after.json
+```
+
+`compare` lists each element whose style changed, by view, and exits non-zero if any did.
+
 ## Packages
 
 All build artifacts land in `out/` (gitignored), named by version.
