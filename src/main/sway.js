@@ -227,6 +227,7 @@ export function createSway({ env = process.env, pid = process.pid, onChange = ()
 
   return {
     name: "sway",
+    tiling: true,
     start() {
       if (polling) return;
       refreshQuietly();

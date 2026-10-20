@@ -2,6 +2,7 @@ import { BrowserWindow, dialog, screen } from "electron";
 import path from "node:path";
 import { CH } from "../shared/channels.js";
 import { createHyprland, displayMatching } from "./hyprland.js";
+import { createKWin } from "./kwin.js";
 import { createSway } from "./sway.js";
 import { MIN_HEIGHT, MIN_WIDTH } from "./placement.js";
 import { IS_WINDOWS, titleBarOptions } from "./platform.js";
@@ -62,7 +63,8 @@ function sameBounds(a, b) {
 
 // `onSessionBounds(id)` and `onBridgeBounds(bounds)` fire, throttled, whenever
 // a window moves or resizes, so the monitor map follows and the layout is saved.
-export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
+// `onHotkey()` fires when a compositor that calls back (KWin) sees the hotkey.
+export function createWindowManager({ onSessionBounds, onBridgeBounds, onHotkey }) {
   const sessionWindows = new Map();
   // Title-bar state the renderer draws, keyed by BrowserWindow id: the
   // maximise toggle for every window, always-on-top and the close lock for
@@ -70,12 +72,12 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
   const chromeState = new Map();
   let bridge = null;
 
-  // Under Hyprland or Sway every window is read and placed through the
-  // compositor. A session window opens under a title naming its session, so
-  // the compositor's record of it can be found, and takes its real title once
-  // that record has been seen.
+  // Under Hyprland, Sway or KDE's KWin every window is read and placed
+  // through the compositor. A session window opens under a title naming its
+  // session, so the compositor's record of it can be found, and takes its
+  // real title once that record has been seen.
   const onChange = () => compositorChanged();
-  const compositor = createHyprland({ onChange }) ?? createSway({ onChange });
+  const compositor = createHyprland({ onChange }) ?? createSway({ onChange }) ?? createKWin({ onChange, onHotkey });
   const openingTitles = new Map();
   const compositorSessions = new Map();
   let lastBridgeBounds = null;
@@ -143,11 +145,12 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     return compositor ? compositorState(win)?.fullscreen === true : win.isFullScreen();
   }
 
-  // A tiling compositor sizes windows without regard to their minimum, and Electron then
-  // lays the page out at the minimum and lets the compositor crop it, so
-  // there the page has to fit whatever it is given.
+  // A tiling compositor sizes windows without regard to their minimum, and
+  // Electron then lays the page out at the minimum and lets the compositor
+  // crop it, so there the page has to fit whatever it is given. KWin floats
+  // windows and honours the minimum.
   function minimumSize(width, height) {
-    return compositor ? {} : { minWidth: width, minHeight: height };
+    return compositor?.tiling ? {} : { minWidth: width, minHeight: height };
   }
 
   function chromeFor(win) {

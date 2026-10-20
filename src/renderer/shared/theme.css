@@ -55,16 +55,19 @@ body {
 /* Under a tiling compositor (Hyprland, Sway) moving, resizing and closing
    are the compositor's, so the caption buttons are not drawn. Hyprland also
    borders the window in the profile colour itself, so the frame goes too;
-   Sway cannot, so there the frame stays. */
+   Sway cannot, so there the frame stays. KDE's KWin floats windows and draws
+   no frame for a frameless one, so there both stay. */
 :root[data-wm="hyprland"] #root {
   border: none;
 }
 
-:root[data-wm] .caption {
+:root[data-wm="hyprland"] .caption,
+:root[data-wm="sway"] .caption {
   display: none;
 }
 
-:root[data-wm] .title-bar {
+:root[data-wm="hyprland"] .title-bar,
+:root[data-wm="sway"] .title-bar {
   padding-right: 8px;
 }
 

@@ -44,6 +44,7 @@ const windows = createWindowManager({
     broadcast();
   },
   onBridgeBounds: (bounds) => instances?.setBridgeBounds(bounds),
+  onHotkey: () => showBridge(),
 });
 let sessions = null;
 let dataDir = null;

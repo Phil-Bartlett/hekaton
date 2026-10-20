@@ -213,6 +213,7 @@ export function createHyprland({ env = process.env, pid = process.pid, onChange 
 
   return {
     name: "hyprland",
+    tiling: true,
     start() {
       if (polling) return;
       refreshQuietly();
