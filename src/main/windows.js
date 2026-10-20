@@ -466,6 +466,10 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     sessionWindow(id)?.destroy();
   }
 
+  function hideAll() {
+    for (const win of BrowserWindow.getAllWindows()) if (!win.isDestroyed()) win.hide();
+  }
+
   function isSessionFocused(id) {
     return sessionWindow(id)?.isFocused() === true;
   }
@@ -526,6 +530,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
     tileSessions,
     restoreSessions,
     closeSessionWindow,
+    hideAll,
     isSessionFocused,
     flashSession,
     pinSession,

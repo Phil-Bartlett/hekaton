@@ -26,6 +26,9 @@ import { createWindowManager } from "./windows.js";
 
 // xterm's ConPTY quirk handling is keyed on the Windows build number.
 const OS_BUILD = Number(os.release().split(".")[2]) || 0;
+// Long enough for hidden windows to leave the screen before the installer
+// starts and the main thread stops answering.
+const INSTALL_AFTER_HIDE_MS = 300;
 
 function argValue(flag) {
   const prefix = `--${flag}=`;
@@ -531,7 +534,19 @@ ipcMain.on(CH.updateInstall, async (event) => {
     if (response !== 0) return;
   }
   quitting = true;
-  updater.install();
+  // Starting the installer holds the main thread while antivirus vets an
+  // unfamiliar, unsigned program, which can take most of a minute and which
+  // Windows shows as a frozen, "not responding" window. So the windows go
+  // first, and a notification says the wait is expected.
+  windows.hideAll();
+  if (Notification.isSupported()) {
+    new Notification({
+      title: `Updating Hekaton to ${updater.state().version}`,
+      body: "It will reopen by itself when the update is installed, which can take a minute or two.",
+      silent: true,
+    }).show();
+  }
+  setTimeout(() => updater.install(), INSTALL_AFTER_HIDE_MS);
 });
 
 const MAX_LAYOUT_NAME = 60;
