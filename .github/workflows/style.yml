@@ -67,7 +67,12 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           cat report.txt
-          if [ "$changed" -ne 0 ] && [ "$EXPECTED" != "true" ]; then
+          # compare exits 1 for changed styles; anything else means it broke.
+          if [ "$changed" -gt 1 ]; then
+            echo "::error::The style check itself failed (exit $changed)."
+            exit "$changed"
+          fi
+          if [ "$changed" -eq 1 ] && [ "$EXPECTED" != "true" ]; then
             echo "::error::Element styles changed. Add the style-change label if that is intended."
             exit 1
           fi

@@ -21,7 +21,6 @@ import os from "node:os";
 import path from "node:path";
 
 const root = process.cwd();
-const electron = createRequire(path.join(root, "package.json"))("electron");
 // A Linux CI runner has no setuid sandbox helper, and the page under test is
 // Hekaton's own.
 const PLATFORM_ARGS = process.platform === "linux" ? ["--no-sandbox"] : [];
@@ -211,6 +210,8 @@ async function walkViews({ send, evaluate }) {
 }
 
 async function recordStyles(out) {
+  // Only recording needs Electron; comparing runs anywhere.
+  const electron = createRequire(path.join(root, "package.json"))("electron");
   const dir = path.join(os.tmpdir(), "hekaton-style-check");
   seed(dir);
   const port = await freePort();
@@ -250,12 +251,19 @@ function compareStyles(before, after) {
   return changed === 0;
 }
 
+// Exit 1 means styles changed and nothing else; any failure of the check
+// itself exits 2, so CI can tell the two apart.
 const [command, ...files] = process.argv.slice(2);
-if (command === "record" && files.length === 1) {
-  await recordStyles(files[0]);
-} else if (command === "compare" && files.length === 2) {
-  process.exitCode = compareStyles(...files) ? 0 : 1;
-} else {
-  console.error("usage: style-check.mjs record <file.json> | compare <before.json> <after.json>");
+try {
+  if (command === "record" && files.length === 1) {
+    await recordStyles(files[0]);
+  } else if (command === "compare" && files.length === 2) {
+    process.exitCode = compareStyles(...files) ? 0 : 1;
+  } else {
+    console.error("usage: style-check.mjs record <file.json> | compare <before.json> <after.json>");
+    process.exitCode = 2;
+  }
+} catch (error) {
+  console.error(error);
   process.exitCode = 2;
 }
