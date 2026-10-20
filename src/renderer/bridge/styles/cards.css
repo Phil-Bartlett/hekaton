@@ -1,0 +1,383 @@
+/* Session cards: live, dormant and external, as tiles, compact tiles or a list. */
+
+/* ---- Session cards ------------------------------------------------------ */
+
+.cards {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  align-content: start;
+}
+
+.cards__group {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.cards__group:first-child {
+  margin-top: 0;
+}
+
+.cards__empty {
+  grid-column: 1 / -1;
+  color: var(--fg-muted);
+  text-align: center;
+  padding: 48px 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-elevated);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+}
+
+.card--external {
+  --accent: var(--border-strong);
+  opacity: 0.85;
+}
+
+.card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.card__name {
+  font-weight: 600;
+  font-size: 15px;
+  min-width: 0;
+}
+
+.card__badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-accent) 24%, var(--bg-elevated));
+  color: var(--fg);
+  margin-right: 8px;
+}
+
+.card__cost {
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.card__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+}
+
+.card__state-detail {
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.card__elapsed {
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+.card__context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.bar {
+  flex: 1;
+  height: 6px;
+  background: var(--track);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar__fill {
+  height: 100%;
+  background: #22c55e;
+  transition: width 300ms ease;
+}
+
+.card__context-pct {
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.card__prompt {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--surface);
+  border-radius: 4px;
+  color: var(--fg-muted);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.card__links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.card__link {
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--control);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.card__link:hover {
+  border-color: var(--accent);
+}
+
+.card__link--artifact {
+  background: color-mix(in srgb, var(--accent) 22%, var(--control));
+}
+
+.card__links-more {
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.card__note {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.card__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.card__actions button,
+.card__terminate {
+  font: inherit;
+  border-radius: 4px;
+  padding: 6px 10px;
+  background: var(--control);
+  color: var(--fg);
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+}
+
+.card__actions button {
+  flex: 1;
+}
+
+.card__actions button:hover {
+  background: var(--control-hover);
+}
+
+.card__terminate {
+  margin-top: auto;
+  background: transparent;
+  border-color: #dc2626;
+  color: var(--danger);
+}
+
+.card__terminate:hover {
+  background: rgba(220, 38, 38, 0.15);
+}
+
+/* ---- Dormant (saved) cards ---------------------------------------------- */
+
+.card--dormant {
+  opacity: 0.8;
+  border-left-style: dashed;
+}
+
+.card--dormant:hover {
+  opacity: 1;
+}
+
+.card__title {
+  font-weight: 400;
+  color: var(--fg-muted);
+}
+
+.card--dormant .card__actions .button--primary {
+  border-color: #22c55e;
+  color: var(--ok);
+}
+
+/* ---- Card menu, subtitle, drag and density -------------------------------- */
+
+.card__subtitle {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card__menu-button {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--fg-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.card__menu-button:hover {
+  color: var(--fg);
+}
+
+.card__menu {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.card__menu select {
+  flex: 1;
+  font: inherit;
+  color: var(--fg);
+  background: var(--control);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+
+.card[draggable="true"] {
+  cursor: grab;
+}
+
+.card.is-dragging {
+  opacity: 0.4;
+}
+
+.card.is-drop-target {
+  outline: 2px dashed #22c55e;
+  outline-offset: 2px;
+}
+
+.cards--compact {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.cards--compact .card {
+  padding: 8px 10px;
+  gap: 6px;
+}
+
+.cards--compact .card__prompt,
+.cards--compact .card__context {
+  display: none;
+}
+
+/* ---- List view ------------------------------------------------------------ */
+
+.cards--list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cards--list .card {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+}
+
+.cards--list .card__head {
+  flex: 0 0 220px;
+  min-width: 0;
+}
+
+.cards--list .card__state {
+  flex: 0 0 170px;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.cards--list .card__context {
+  flex: 0 0 150px;
+}
+
+.cards--list .card__prompt {
+  flex: 1;
+  min-width: 0;
+  -webkit-line-clamp: 1;
+  padding: 4px 8px;
+}
+
+.cards--list .card__actions {
+  flex: none;
+}
+
+.cards--list .card__actions button {
+  flex: none;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.cards--list .card__terminate {
+  flex: none;
+  margin-top: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.cards--list .card__menu {
+  flex: none;
+}
+
+.cards--list .card__note {
+  flex: 1;
+}

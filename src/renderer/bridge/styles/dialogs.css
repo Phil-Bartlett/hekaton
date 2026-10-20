@@ -1,0 +1,344 @@
+/* Dialogs: history, reference, adopt, layouts and the command palette. */
+
+.dialog--wide {
+  width: min(760px, 92vw);
+  max-height: 86vh;
+}
+
+/* ---- Dialog frame and history ------------------------------------------- */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.dialog {
+  width: min(520px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.dialog__head {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dialog__title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.dialog__close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--fg-muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.dialog__filter {
+  margin: 12px 16px 0;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+}
+
+.dialog__toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px 0;
+}
+
+.dialog__toolbar .dialog__filter {
+  margin: 0;
+  flex: 1;
+}
+
+.dialog__pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.dialog__pick select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.history-entry__folder {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  margin-right: 12px;
+}
+
+.dialog__list {
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dialog__empty {
+  color: var(--fg-muted);
+  text-align: center;
+  margin: 24px 0;
+}
+
+.history-entry {
+  background: var(--bg-elevated);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-entry__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-entry__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.history-entry__name {
+  font-weight: 600;
+}
+
+.history-entry__ago {
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.history-entry__prompt {
+  margin: 0;
+  color: var(--fg-muted);
+  font-style: italic;
+  font-size: 13px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.history-entry__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.history-entry__foot button,
+.dialog__toolbar button {
+  font: inherit;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: var(--control);
+  color: var(--fg);
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+}
+
+.history-entry__foot button:disabled,
+.dialog__toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.history-entry__actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ---- Reference dialog --------------------------------------------------- */
+
+.ref-group__title {
+  margin: 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ref-entry {
+  background: var(--bg-elevated);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ref-entry__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ref-entry__name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.ref-entry__head button {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: var(--control);
+  color: var(--fg);
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+}
+
+.ref-entry__facts {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.ref-entry__facts strong {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.ref-entry__description {
+  margin: 0;
+  font-size: 13px;
+}
+
+.ref-entry__preview {
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 96px;
+  overflow: hidden;
+  background: var(--surface);
+  border-radius: 4px;
+  color: var(--fg-muted);
+  font-family: "Cascadia Mono", Consolas, Menlo, monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---- Command palette (Ctrl/Cmd+K) ---------------------------------------- */
+
+.palette {
+  width: min(640px, 92vw);
+  max-height: 70vh;
+  align-self: flex-start;
+  margin-top: 12vh;
+}
+
+.palette__input {
+  margin: 12px 16px 8px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+}
+
+.palette__list {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 8px;
+  overflow-y: auto;
+}
+
+.palette__item {
+  display: grid;
+  grid-template-columns: 8px 110px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.palette__item.is-active {
+  background: var(--control-hover);
+}
+
+.palette__item.is-inert {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.palette__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.palette__kind {
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.palette__title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.palette__detail {
+  color: var(--fg-muted);
+  font-size: 12px;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.palette__empty {
+  padding: 16px;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+.palette__foot {
+  padding: 6px 16px 10px;
+  color: var(--fg-muted);
+  font-size: 11px;
+  border-top: 1px solid var(--border);
+}

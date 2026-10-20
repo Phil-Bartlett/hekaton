@@ -1,0 +1,110 @@
+/* The profiles rail and the profile editor's window-placement preview. */
+
+/* ---- Profiles rail ------------------------------------------------------ */
+
+.profiles-rail {
+  flex: none;
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-card {
+  position: relative;
+  flex: none;
+  width: 156px;
+  padding: 10px 12px 12px;
+  box-sizing: border-box;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-top-width: 4px;
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--fg);
+  font: inherit;
+}
+
+.profile-card:hover,
+.profile-card:focus-visible {
+  background: var(--control-hover);
+  outline: none;
+}
+
+.profile-card:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.profile-card__name {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.profile-card__meta {
+  color: var(--fg-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-card__edit {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: none;
+  border: none;
+  color: var(--fg-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.profile-card__edit:hover {
+  color: var(--fg);
+}
+
+.profile-card--new {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed var(--border-strong);
+  color: var(--fg-muted);
+}
+
+.profile-card__plus {
+  font-size: 20px;
+}
+
+/* ---- Placement preview ---------------------------------------------------- */
+
+.placement {
+  position: relative;
+  height: 130px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+}
+
+.placement__window {
+  position: absolute;
+  box-sizing: border-box;
+  background: #166534;
+  border: 1px solid #22c55e;
+}
+
+.position-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.position-grid .is-selected {
+  background: #166534;
+  border-color: #22c55e;
+  color: #fff;
+}

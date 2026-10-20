@@ -1,0 +1,196 @@
+/* Bridge frame: the main area, title-bar tools, tabs, the profile filter
+   and the tile and view controls above the cards. */
+
+.bridge {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Title bar tools ---------------------------------------------------- */
+
+.title-bar__tools {
+  margin-left: auto;
+  display: flex;
+  -webkit-app-region: no-drag;
+}
+
+.title-bar__control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.title-bar__control:hover {
+  background: var(--control-hover);
+  color: var(--fg);
+}
+
+/* ---- Tabs (Settings, Reference) ------------------------------------------ */
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs__tab {
+  font: inherit;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.tabs__tab.is-active {
+  color: var(--fg);
+  border-bottom-color: #22c55e;
+}
+
+.tabs__tools {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  padding-bottom: 6px;
+}
+
+.tabs__tools button {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--control);
+  color: var(--fg);
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+}
+
+/* ---- Profile filter ------------------------------------------------------ */
+
+.filter {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 16px 0;
+}
+
+.filter__option {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--control);
+  color: var(--fg-muted);
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter__option:hover {
+  background: var(--control-hover);
+  color: var(--fg);
+}
+
+.filter__option.is-active {
+  background: #166534;
+  border-color: #22c55e;
+  color: #fff;
+}
+
+.filter__count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+/* ---- Tile and view controls ---------------------------------------------- */
+
+.layout-controls {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.layout-controls select {
+  font: inherit;
+  font-size: 12px;
+  color: var(--fg);
+  background: var(--control);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+.tile-controls {
+  margin-left: 12px;
+}
+
+.tile-controls + .layout-controls {
+  margin-left: 12px;
+}
+
+.tile-controls > button {
+  font: inherit;
+  font-size: 12px;
+  color: var(--fg);
+  background: var(--control);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.tile-controls > button:hover:not(:disabled) {
+  background: var(--control-hover);
+}
+
+.tile-controls > button:disabled {
+  color: var(--fg-muted);
+  opacity: 0.6;
+}
+
+.filter-row {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding-right: 16px;
+}
+
+.filter-row .filter {
+  flex: 1;
+}
+
+/* ---- Narrow windows --------------------------------------------------------
+   A tiling compositor can make the Bridge far narrower than its minimum. The
+   profile filter takes a line of its own above the tile and view controls. */
+
+@media (max-width: 900px) {
+  .filter-row {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding-left: 16px;
+  }
+
+  .filter-row .filter {
+    flex-basis: 100%;
+    padding-left: 0;
+  }
+
+  .tile-controls {
+    margin-left: 0;
+  }
+}

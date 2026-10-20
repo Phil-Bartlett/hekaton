@@ -1,0 +1,104 @@
+/* Settings: status colours, themes and the theme editor. */
+
+/* ---- Settings ----------------------------------------------------------- */
+
+.settings .tabs {
+  padding-left: 0;
+}
+
+.settings__title {
+  margin-right: 16px;
+  font-size: 18px;
+}
+
+.settings__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 720px;
+}
+
+.settings__body button {
+  align-self: flex-start;
+}
+
+.status-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.status-table__row {
+  display: grid;
+  grid-template-columns: 140px 1fr 120px 36px;
+  gap: 8px;
+  align-items: center;
+}
+
+.status-table__row--head {
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.status-table__row input[type="color"] {
+  width: 32px;
+  padding: 1px;
+}
+
+.theme-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.theme-row.is-selected {
+  border-color: #22c55e;
+}
+
+.theme-row__pick {
+  flex: 1;
+  text-align: left;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 8px 10px;
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.theme-row__edit {
+  border: 1px solid var(--border-strong);
+  background: var(--control);
+  color: var(--fg);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.swatches {
+  display: flex;
+  gap: 3px;
+}
+
+.swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.theme-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border-radius: 6px;
+}
