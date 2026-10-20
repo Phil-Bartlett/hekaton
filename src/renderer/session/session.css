@@ -280,3 +280,36 @@
   font-weight: 400;
   color: var(--fg-muted);
 }
+
+/* ---- Narrow windows ------------------------------------------------------
+   A tiling compositor can make a window far narrower than its minimum. The
+   controls always stay; the path goes first, then the facts, and the name
+   shortens last. */
+
+.title-bar__controls,
+.state-pill {
+  flex: none;
+}
+
+@media (max-width: 560px) {
+  .title-bar__meta,
+  .state-pill__tool {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .title-bar__facts {
+    display: none;
+  }
+
+  .title-bar__name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .title-bar__controls {
+    margin-left: auto;
+  }
+}
