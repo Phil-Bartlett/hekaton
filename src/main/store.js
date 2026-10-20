@@ -34,6 +34,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   notifyFinished: true,
   keepInTray: true,
   launchAtLogin: false,
+  autoUpdate: true,
 });
 
 // Launch profiles and app settings, each one JSON file in the data folder.

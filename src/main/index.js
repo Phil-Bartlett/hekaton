@@ -21,6 +21,7 @@ import { startTelemetryServer } from "./telemetry.js";
 import { createTray } from "./tray.js";
 import { createUsage } from "./usage.js";
 import { iconPath, relaunchCommand, setLaunchAtLogin } from "./platform.js";
+import { createUpdater } from "./updater.js";
 import { createWindowManager } from "./windows.js";
 
 // xterm's ConPTY quirk handling is keyed on the Windows build number.
@@ -49,6 +50,7 @@ let instances = null;
 let fx = null;
 let usage = null;
 let tray = null;
+let updater = null;
 let quitting = false;
 let registry = [];
 // Where the windows were before the last tile, for its undo.
@@ -198,6 +200,7 @@ function snapshot() {
     order: instances.order(),
     external: externalSessions(),
     canUndoTile: untile !== null,
+    update: updater?.state() ?? null,
   };
 }
 
@@ -498,6 +501,33 @@ ipcMain.on(CH.sessionsUndoTile, (event) => {
   broadcast();
 });
 
+ipcMain.on(CH.updateCheck, (event) => {
+  if (fromBridge(event)) updater?.check();
+});
+
+// Installing restarts Hekaton, which ends every live session. They come back
+// as saved cards, but the user is asked first.
+ipcMain.on(CH.updateInstall, async (event) => {
+  if (!fromBridge(event) || updater?.state().status !== "ready") return;
+  const live = sessions.list().length;
+  if (live > 0) {
+    const { response } = await dialog.showMessageBox(windows.bridgeWindow(), {
+      type: "question",
+      buttons: ["Restart and update", "Later"],
+      defaultId: 1,
+      cancelId: 1,
+      message: `Restart Hekaton to update to ${updater.state().version}?`,
+      detail:
+        live === 1
+          ? "1 Claude session is running. It will close and come back as a saved card you can resume."
+          : `${live} Claude sessions are running. They will close and come back as saved cards you can resume.`,
+    });
+    if (response !== 0) return;
+  }
+  quitting = true;
+  updater.install();
+});
+
 const MAX_LAYOUT_NAME = 60;
 
 // A named layout remembers where every live card's window sits. Cards keep
@@ -651,6 +681,8 @@ app.whenReady().then(async () => {
   // `--hidden` (the launch-at-login argument) starts in the tray only.
   if (!(process.argv.includes("--hidden") && tray)) showBridge();
   applyHotkey(store.settings().hotkey);
+  updater = createUpdater({ onChange: broadcast, enabled: () => store.settings().autoUpdate });
+  updater.start();
 
   // `hekaton --launch=<profile name or id>` opens a session straight away.
   const launch = argValue("launch");

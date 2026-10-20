@@ -32,6 +32,8 @@ export const CH = Object.freeze({
   layoutSave: "layout:save",
   layoutApply: "layout:apply",
   layoutDelete: "layout:delete",
+  updateCheck: "update:check",
+  updateInstall: "update:install",
   instanceResume: "instance:resume",
   instanceDismiss: "instance:dismiss",
   instanceMove: "instance:move",
