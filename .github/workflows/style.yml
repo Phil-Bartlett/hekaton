@@ -1,0 +1,73 @@
+name: Style check
+
+# Records the computed style of every element the Bridge draws on the pull
+# request's base and on the pull request itself, under Xvfb on the same
+# runner, and fails if any differs (scripts/style-check.mjs). A change that
+# is meant to move something says so with the "style-change" label, which
+# keeps the report and lets the check pass. In its own workflow so adding or
+# removing the label re-runs only this.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  style:
+    name: Style check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          path: head
+
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            head/package-lock.json
+            base/package-lock.json
+
+      - name: Install Xvfb
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb
+
+      # node-pty ships no Linux prebuild, so each checkout builds it for Electron.
+      - name: Build both checkouts
+        run: |
+          for side in base head; do
+            (cd "$side" && npm ci && npx electron-rebuild -f -w node-pty && node scripts/build.mjs)
+          done
+
+      # The pull request's copy of the script records both sides, so a base
+      # from before the script existed is still measured the same way.
+      - name: Record base and head
+        run: |
+          (cd base && xvfb-run -a node ../head/scripts/style-check.mjs record ../base.json)
+          (cd head && xvfb-run -a node scripts/style-check.mjs record ../head.json)
+
+      - name: Compare
+        env:
+          EXPECTED: ${{ contains(github.event.pull_request.labels.*.name, 'style-change') }}
+        run: |
+          set +e
+          node head/scripts/style-check.mjs compare base.json head.json > report.txt
+          changed=$?
+          {
+            echo "## Style check"
+            echo '```'
+            cat report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat report.txt
+          if [ "$changed" -ne 0 ] && [ "$EXPECTED" != "true" ]; then
+            echo "::error::Element styles changed. Add the style-change label if that is intended."
+            exit 1
+          fi
