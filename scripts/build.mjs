@@ -33,7 +33,7 @@ const builds = [
     entryPoints: ["src/main/index.js"],
     outfile: "dist/main.cjs",
     // Shipped in node_modules as runtime dependencies rather than bundled.
-    external: ["electron", "node-pty", "electron-updater"],
+    external: ["electron", "node-pty", "electron-updater", "dbus-native"],
   },
   {
     ...nodeTier,
