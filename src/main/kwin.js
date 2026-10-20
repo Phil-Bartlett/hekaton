@@ -220,13 +220,23 @@ export function createKWin({ env = process.env, pid = process.pid, onChange = ()
     return found ?? null;
   }
 
+  // Scripts go to KWin one at a time, in the order they were asked for:
+  // loading one while another is between load and unload loses one of them.
+  let queue = Promise.resolve();
+  function enqueue(task) {
+    queue = queue
+      .then(start)
+      .then(task)
+      .catch((error) => console.error(`kwin: ${error.message}`));
+  }
+
   function act(title, build) {
     const id = lookup(title)?.id;
     if (id === undefined) return;
     serial += 1;
-    start()
-      .then(() => runScript(`hekaton-act-${serial}`, build(id)))
-      .catch((error) => console.error(`kwin: ${error.message}`));
+    const name = `hekaton-act-${serial}`;
+    const source = build(id);
+    enqueue(() => runScript(name, source));
   }
 
   // The watcher carries the shortcut, so a new hotkey reloads it.
@@ -234,9 +244,8 @@ export function createKWin({ env = process.env, pid = process.pid, onChange = ()
     const next = accelerator ? qtKeys(accelerator) : null;
     if (accelerator && !next) return false;
     keys = next;
-    start()
-      .then(() => runScript(WATCHER, watcherScript({ destination, pid, keys }), { keep: true }))
-      .catch((error) => console.error(`kwin: ${error.message}`));
+    const source = watcherScript({ destination, pid, keys });
+    enqueue(() => runScript(WATCHER, source, { keep: true }));
     return true;
   }
 
