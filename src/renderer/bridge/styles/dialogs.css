@@ -1,10 +1,5 @@
 /* Dialogs: history, reference, adopt, layouts and the command palette. */
 
-.dialog--wide {
-  width: min(760px, 92vw);
-  max-height: 86vh;
-}
-
 /* ---- Dialog frame and history ------------------------------------------- */
 
 .dialog-backdrop {
@@ -26,6 +21,12 @@
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* After .dialog, which it overrides at the same specificity. */
+.dialog--wide {
+  width: min(760px, 92vw);
+  max-height: 86vh;
 }
 
 .dialog__head {
