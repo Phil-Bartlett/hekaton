@@ -45,6 +45,24 @@ export function setLaunchAtLogin(enabled) {
   app.setLoginItemSettings({ openAtLogin: enabled, args: ["--hidden"] });
 }
 
+function shellQuote(text) {
+  return `'${text.replace(/'/g, "'\\''")}'`;
+}
+
+// A shell command that starts this copy of Hekaton again, for a Linux
+// compositor to run. A second launch only raises the running Bridge, so it
+// names the same data folder, which is what the single-instance lock keys on.
+// An AppImage run without FUSE has to be told to extract itself again.
+export function relaunchCommand() {
+  const args = [
+    process.env.APPIMAGE ?? process.execPath,
+    ...(process.defaultApp ? [app.getAppPath()] : []),
+    `--user-data-dir=${app.getPath("userData")}`,
+  ];
+  const env = process.env.APPIMAGE_EXTRACT_AND_RUN ? "env APPIMAGE_EXTRACT_AND_RUN=1 " : "";
+  return env + args.map(shellQuote).join(" ");
+}
+
 // The native installer puts the binary in ~/.local/bin on every platform;
 // any other install (npm global, Homebrew) is found through PATH, unless the
 // user pointed Settings at a specific executable.

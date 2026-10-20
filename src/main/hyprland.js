@@ -118,6 +118,65 @@ export function batch(commands) {
   return `[[BATCH]]${commands.map((command) => `dispatch ${command}`).join(";")}`;
 }
 
+const KEY_MODIFIERS = {
+  control: "CTRL",
+  ctrl: "CTRL",
+  commandorcontrol: "CTRL",
+  cmdorctrl: "CTRL",
+  alt: "ALT",
+  option: "ALT",
+  shift: "SHIFT",
+  super: "SUPER",
+  meta: "SUPER",
+  command: "SUPER",
+  cmd: "SUPER",
+};
+
+// Electron's names for keys that are not a single character, as xkb keysyms.
+const NAMED_KEYS = {
+  space: "space",
+  enter: "Return",
+  return: "Return",
+  tab: "Tab",
+  escape: "Escape",
+  esc: "Escape",
+  backspace: "BackSpace",
+  delete: "Delete",
+  home: "Home",
+  end: "End",
+  pageup: "Prior",
+  pagedown: "Next",
+  up: "Up",
+  down: "Down",
+  left: "Left",
+  right: "Right",
+};
+
+// An Electron accelerator ("Control+Alt+H") in Hyprland's bind syntax
+// ("CTRL + ALT + H"), or null for one it cannot express.
+export function hyprlandKeys(accelerator) {
+  const parts = String(accelerator ?? "")
+    .split("+")
+    .map((part) => part.trim());
+  const key = parts.pop();
+  const modifiers = parts.map((part) => KEY_MODIFIERS[part.toLowerCase()]);
+  if (modifiers.some((modifier) => !modifier)) return null;
+  const name = /^([a-z0-9]|f([1-9]|1[0-9]|2[0-4]))$/i.test(key) ? key.toUpperCase() : NAMED_KEYS[key.toLowerCase()];
+  return name ? [...new Set(modifiers), name].join(" + ") : null;
+}
+
+function luaString(text) {
+  return `"${text.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
+}
+
+export function bindCode(keys, command) {
+  return `hl.bind(${luaString(keys)}, hl.dsp.exec_cmd(${luaString(command)}))`;
+}
+
+export function unbindCode(keys) {
+  return `hl.unbind(${luaString(keys)})`;
+}
+
 // `onChange` fires whenever a window or monitor differs from the last poll.
 // Returns null outside Hyprland.
 export function createHyprland({ env = process.env, pid = process.pid, onChange = () => {} } = {}) {
@@ -167,6 +226,30 @@ export function createHyprland({ env = process.env, pid = process.pid, onChange 
     if (address) dispatch(build(address)).catch((error) => console.error(`hyprland: ${error.message}`));
   }
 
+  async function evaluate(code) {
+    const reply = (await request(`eval ${code}`)).trim();
+    if (reply !== "ok") throw new Error(reply);
+  }
+
+  // Wayland gives no client a global shortcut, so Hyprland binds the keys to
+  // run `command` instead. The binding outlives Hekaton, so the keys also
+  // start it; any binding left by an earlier run is replaced, not doubled.
+  // False for an accelerator Hyprland cannot express.
+  let hotkey = null;
+  function setHotkey(accelerator, command) {
+    const keys = accelerator ? hyprlandKeys(accelerator) : null;
+    if (accelerator && !keys) return false;
+    const previous = hotkey;
+    hotkey = keys;
+    (async () => {
+      if (previous && previous !== keys) await evaluate(unbindCode(previous));
+      if (!keys) return;
+      await evaluate(unbindCode(keys));
+      await evaluate(bindCode(keys, command));
+    })().catch((error) => console.error(`hyprland: ${error.message}`));
+    return true;
+  }
+
   return {
     start() {
       if (polling) return;
@@ -180,5 +263,6 @@ export function createHyprland({ env = process.env, pid = process.pid, onChange 
     tile: (title) => act(title, tileCommands),
     pin: (title, pinned) => act(title, (address) => pinCommands(address, pinned)),
     border: (title, colour) => act(title, (address) => borderCommands(address, colour)),
+    setHotkey,
   };
 }

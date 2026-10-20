@@ -20,7 +20,7 @@ import { TILE_LAYOUTS } from "./tiling.js";
 import { startTelemetryServer } from "./telemetry.js";
 import { createTray } from "./tray.js";
 import { createUsage } from "./usage.js";
-import { iconPath, setLaunchAtLogin } from "./platform.js";
+import { iconPath, relaunchCommand, setLaunchAtLogin } from "./platform.js";
 import { createWindowManager } from "./windows.js";
 
 // xterm's ConPTY quirk handling is keyed on the Windows build number.
@@ -269,9 +269,12 @@ function forgetSession(id) {
 }
 
 // The global hotkey raises the Bridge from anywhere; an invalid accelerator
-// is reported back to Settings rather than silently ignored.
+// is reported back to Settings rather than silently ignored. On Wayland
+// Electron's shortcuts register but never fire, so under Hyprland the
+// compositor binds the keys to relaunch Hekaton, which raises the Bridge.
 function applyHotkey(accelerator) {
   globalShortcut.unregisterAll();
+  if (windows.compositor) return windows.compositor.setHotkey(accelerator, relaunchCommand());
   if (!accelerator) return true;
   try {
     return globalShortcut.register(accelerator, () => windows.createBridgeWindow(instances?.bridgeBounds()));

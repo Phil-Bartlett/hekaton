@@ -501,6 +501,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds }) {
 
   return {
     windowManager: hyprland ? "hyprland" : null,
+    compositor: hyprland,
     listDisplays,
     boundsOnScreen,
     createBridgeWindow,

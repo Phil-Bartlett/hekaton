@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   batch,
+  bindCode,
   borderCommands,
   createHyprland,
   displayMatching,
   displaysFrom,
+  hyprlandKeys,
   pinCommands,
   placeCommands,
   socketPath,
+  unbindCode,
   windowsFrom,
 } from "../src/main/hyprland.js";
 
@@ -143,5 +146,27 @@ describe("commands", () => {
 
   it("batches dispatchers", () => {
     expect(batch(["a()", "b()"])).toBe("[[BATCH]]dispatch a();dispatch b()");
+  });
+});
+
+describe("hotkey", () => {
+  it("turns an Electron accelerator into Hyprland's bind syntax", () => {
+    expect(hyprlandKeys("Control+Alt+H")).toBe("CTRL + ALT + H");
+    expect(hyprlandKeys("CommandOrControl+Shift+space")).toBe("CTRL + SHIFT + space");
+    expect(hyprlandKeys("Super+F12")).toBe("SUPER + F12");
+    expect(hyprlandKeys("Ctrl+Control+PageUp")).toBe("CTRL + Prior");
+  });
+
+  it("refuses what it cannot express", () => {
+    expect(hyprlandKeys("Control+Hyper+H")).toBeNull();
+    expect(hyprlandKeys("Control+MediaPlayPause")).toBeNull();
+    expect(hyprlandKeys("Control+")).toBeNull();
+  });
+
+  it("quotes the command for Lua", () => {
+    expect(bindCode("CTRL + ALT + H", String.raw`'/opt/He"ka\ton/hekaton'`)).toBe(
+      String.raw`hl.bind("CTRL + ALT + H", hl.dsp.exec_cmd("'/opt/He\"ka\\ton/hekaton'"))`,
+    );
+    expect(unbindCode("CTRL + ALT + H")).toBe('hl.unbind("CTRL + ALT + H")');
   });
 });
