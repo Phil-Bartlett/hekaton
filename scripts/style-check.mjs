@@ -153,9 +153,13 @@ async function walkViews({ send, evaluate }) {
     views[name] = await evaluate(SNAPSHOT);
   };
 
-  // Focus and the real pointer change :focus and :hover, so both are pinned.
+  // Focus and the pointer change :focus and :hover. Focus is pinned, the
+  // pointer is parked over the title, and then the window stops listening to
+  // the real mouse, which could otherwise cross it mid-recording. The views
+  // are driven by clicks made in the page, which still work.
   await send("Emulation.setFocusEmulationEnabled", { enabled: true });
   await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 2, y: 2 });
+  await send("Input.setIgnoreInputEvents", { ignore: true });
   await evaluate(
     `new Promise((resolve) => { const ready = () => document.querySelector(".cards") ? resolve() : setTimeout(ready, 100); ready(); })`,
   );
