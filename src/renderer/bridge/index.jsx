@@ -528,6 +528,9 @@ function App() {
           <button type="button" onClick={() => setReferenceKind("agent")}>
             Agents
           </button>
+          <button type="button" onClick={() => setReferenceKind("memory")}>
+            Memory
+          </button>
         </nav>
         <span className="status-bar__version">v{state.version}</span>
       </footer>
