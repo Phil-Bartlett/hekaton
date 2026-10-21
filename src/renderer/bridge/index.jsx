@@ -10,6 +10,7 @@ import ProfilesRail from "./ProfilesRail.jsx";
 import ReferenceDialog from "./ReferenceDialog.jsx";
 import SessionCard, { DormantCard, ExternalSessionCard } from "./SessionCard.jsx";
 import SettingsView from "./SettingsView.jsx";
+import ExtensionBadge from "./ExtensionBadge.jsx";
 import UpdateBadge from "./UpdateBadge.jsx";
 import UsagePanel from "./UsagePanel.jsx";
 import { TILE_LAYOUT_LABELS, liveCard, orderCards, projectOf } from "./cards.js";
@@ -425,6 +426,7 @@ function App() {
       <header className="title-bar">
         <span className="title-bar__name">Hekaton</span>
         <span className="title-bar__tools">
+          <ExtensionBadge status={state.extension} />
           <UpdateBadge update={state.update} />
           <button
             type="button"

@@ -58,6 +58,7 @@ contextBridge.exposeInMainWorld("hekaton", {
     deleteLayout: (id) => ipcRenderer.send(CH.layoutDelete, id),
     checkForUpdates: () => ipcRenderer.send(CH.updateCheck),
     installUpdate: () => ipcRenderer.send(CH.updateInstall),
+    installExtension: () => ipcRenderer.send(CH.extensionInstall),
     resumeInstance: (id) => ipcRenderer.invoke(CH.instanceResume, id),
     dismissInstance: (id) => ipcRenderer.invoke(CH.instanceDismiss, id),
     moveInstance: (id, profileId) => ipcRenderer.invoke(CH.instanceMove, id, profileId),

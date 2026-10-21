@@ -45,6 +45,7 @@ const windows = createWindowManager({
   },
   onBridgeBounds: (bounds) => instances?.setBridgeBounds(bounds),
   onHotkey: () => showBridge(),
+  onCompositorStatus: () => broadcast(),
 });
 let sessions = null;
 let dataDir = null;
@@ -205,6 +206,7 @@ function snapshot() {
     external: externalSessions(),
     canUndoTile: untile !== null,
     update: updater?.state() ?? null,
+    extension: windows.extensionStatus(),
   };
 }
 
@@ -513,6 +515,19 @@ ipcMain.on(CH.sessionsUndoTile, (event) => {
 
 ipcMain.on(CH.updateCheck, (event) => {
   if (fromBridge(event)) updater?.check();
+});
+
+ipcMain.on(CH.extensionInstall, (event) => {
+  if (!fromBridge(event)) return;
+  Promise.resolve(windows.installExtension()).catch((error) => {
+    console.error(`extension install failed: ${error.message}`);
+    dialog.showMessageBox(windows.bridgeWindow(), {
+      type: "error",
+      title: "Couldn't install the GNOME extension",
+      message: "Hekaton couldn't install its GNOME Shell extension.",
+      detail: error.message,
+    });
+  });
 });
 
 // Installing restarts Hekaton, which ends every live session. They come back
