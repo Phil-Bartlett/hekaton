@@ -13,6 +13,7 @@ import { scanReference } from "./scanner.js";
 import { listConversations } from "./conversations.js";
 import { createDataDir } from "./dataDir.js";
 import { endOutsideSession } from "./endOutside.js";
+import { DEVICE_FILE, createFleet, migrateLegacyState, readDevice } from "./fleet.js";
 import { createSessionManager } from "./sessions.js";
 import { attentionFor } from "./state.js";
 import { createStore } from "./store.js";
@@ -48,7 +49,9 @@ const windows = createWindowManager({
   onCompositorStatus: () => broadcast(),
 });
 let sessions = null;
+let device = null;
 let dataDir = null;
+let fleet = null;
 let store = null;
 let history = null;
 let instances = null;
@@ -199,11 +202,14 @@ function snapshot() {
     windowManager: windows.windowManager,
     settings: store.settings(),
     dataFolder: { path: dataDir.dir, isDefault: dataDir.isDefault },
+    device,
     profiles: store.profiles(),
     sessions: sessions.list().map((session) => ({ ...session, bounds: windows.sessionBounds(session.id) })),
     dormant: annotateOrphans(instances.dormant()),
     order: instances.order(),
     external: externalSessions(),
+    // Every other machine sharing the data folder, with what it is running.
+    hosts: fleet.hosts(),
     canUndoTile: untile !== null,
     update: updater?.state() ?? null,
     extension: windows.extensionStatus(),
@@ -212,6 +218,8 @@ function snapshot() {
 
 function broadcast() {
   windows.sendToBridge(CH.bridgeState, snapshot());
+  // Other machines follow the same changes through the presence file.
+  fleet?.publish();
 }
 
 // One history line per session, written when its Claude exits or it is
@@ -391,6 +399,7 @@ function flushForQuit() {
   } catch (error) {
     console.error(`state.json not saved on quit: ${error.message}`);
   }
+  fleet?.stop();
 }
 
 function terminateSession(id) {
@@ -703,13 +712,29 @@ app.whenReady().then(async () => {
     return sessions.applyStatus(id, payload, meta);
   });
   console.log(`telemetry receiver on 127.0.0.1:${telemetryServer.port}`);
-  dataDir = createDataDir();
+  // The device id stays in the local user-data folder even when the data
+  // folder is shared: it is what tells this machine's files from the others'.
+  device = readDevice(path.join(app.getPath("userData"), DEVICE_FILE));
+  dataDir = createDataDir({ deviceId: device.id });
   store = createStore({ dir: dataDir.dir });
   history = createHistory({ dir: dataDir.dir });
-  instances = createInstances({ file: path.join(dataDir.dir, "state.json") });
+  fleet = createFleet({
+    dataDir: dataDir.dir,
+    device,
+    appVersion: app.getVersion(),
+    liveSessions: () => sessions.list(),
+    onChange: broadcast,
+  });
+  migrateLegacyState({
+    legacyFile: path.join(dataDir.dir, "state.json"),
+    hostFile: fleet.stateFile,
+    hostname: os.hostname(),
+  });
+  instances = createInstances({ file: fleet.stateFile });
   fx = createFx();
   usage = createUsage();
   sessions = createSessionManager(onSessionEvent, telemetryServer);
+  fleet.start();
   watchRegistry((rows) => {
     registry = rows;
     broadcast();
