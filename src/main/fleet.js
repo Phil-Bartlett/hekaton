@@ -1,23 +1,32 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, watch } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, watch } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { writeJsonAtomic } from "./jsonFile.js";
 
 // Several Hekatons can share one data folder, one per machine. Each writes
-// only under hosts/<deviceId>/: its own cards (state.json) and a presence
-// file (host.json) carrying its live sessions and a heartbeat, so no two
-// machines ever write the same file and a sync tool has nothing to merge.
-// Every other machine's folder is read and shown, never written.
+// only under hosts/<deviceId>/: its own cards (state.json), a presence file
+// (host.json) carrying its live sessions and a heartbeat, and the results
+// of commands it has carried out. The one thing a machine puts in another's
+// folder is a new file in its inbox/, asking it to do something; the owner
+// deletes it once done. No two machines ever write the same file, so a sync
+// tool has nothing to merge.
 
 export const HOSTS_DIR = "hosts";
 export const PRESENCE_FILE = "host.json";
 export const STATE_FILE = "state.json";
 export const DEVICE_FILE = "device.json";
+export const INBOX_DIR = "inbox";
+export const RESULTS_DIR = "results";
+export const COMMAND_TYPES = Object.freeze(["terminate", "resume"]);
 export const HEARTBEAT_MS = 5000;
-// Generous, because the presence file may arrive through OneDrive or Syncthing.
+// Generous, because the files may arrive through OneDrive or Syncthing.
 export const STALE_MS = 60_000;
-const POLL_MS = 5000;
+export const COMMAND_MAX_AGE_MS = 5 * 60_000;
+export const RESULT_KEEP_MS = 10 * 60_000;
+export const PENDING_TIMEOUT_MS = 30_000;
+const ERROR_SHOWN_MS = 30_000;
+const POLL_MS = 3000;
 const PUBLISH_DELAY_MS = 1000;
 const WATCH_DEBOUNCE_MS = 400;
 const SCHEMA = 1;
@@ -28,6 +37,10 @@ function readJson(file) {
   } catch {
     return null;
   }
+}
+
+function remove(file) {
+  rmSync(file, { force: true });
 }
 
 // A machine's identity: a random id minted on first run and kept in the
@@ -130,21 +143,93 @@ export function readHosts(dataDir, { exclude, now = Date.now() } = {}) {
     .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 
-// Publishes this machine's presence and follows every other machine's.
+// Ask another machine to do something with one of its cards. The request is
+// a new file in that machine's inbox, named by its own id.
+export function sendCommand(dataDir, { to, from, type, cardId, uuid = randomUUID, now = Date.now() }) {
+  const command = { id: uuid(), to, from, type, cardId, sentAt: now };
+  const file = path.join(hostDir(dataDir, to), INBOX_DIR, `${command.id}.json`);
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeJsonAtomic(file, command);
+  return command;
+}
+
+// What is waiting in a machine's inbox, oldest first. Anything malformed,
+// addressed elsewhere or older than a few minutes (sent while this machine
+// was away, say) is deleted unread rather than acted on late.
+export function readInbox(dir, { self, now = Date.now() }) {
+  const inbox = path.join(dir, INBOX_DIR);
+  let names;
+  try {
+    names = readdirSync(inbox).filter((name) => name.endsWith(".json"));
+  } catch {
+    return [];
+  }
+  const commands = [];
+  for (const name of names) {
+    const file = path.join(inbox, name);
+    const command = readJson(file);
+    if (!command) continue; // still arriving; next pass
+    const wellFormed =
+      typeof command.id === "string" &&
+      command.to === self &&
+      COMMAND_TYPES.includes(command.type) &&
+      typeof command.cardId === "string";
+    if (!wellFormed || now - (command.sentAt ?? 0) > COMMAND_MAX_AGE_MS) {
+      remove(file);
+      continue;
+    }
+    commands.push({ ...command, file });
+  }
+  return commands.sort((a, b) => a.sentAt - b.sentAt);
+}
+
+export function writeResult(dir, { id, ok, error = null, now = Date.now() }) {
+  const file = path.join(dir, RESULTS_DIR, `${id}.json`);
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeJsonAtomic(file, { id, ok, error, at: now });
+}
+
+export function readResult(dataDir, hostId, commandId) {
+  return readJson(path.join(hostDir(dataDir, hostId), RESULTS_DIR, `${commandId}.json`));
+}
+
+// Results are only read by the machine that asked, within seconds; the rest
+// is litter.
+export function pruneResults(dir, now = Date.now()) {
+  const results = path.join(dir, RESULTS_DIR);
+  let names;
+  try {
+    names = readdirSync(results);
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    const file = path.join(results, name);
+    const result = readJson(file);
+    if (!result || now - (result.at ?? 0) > RESULT_KEEP_MS) remove(file);
+  }
+}
+
+// Publishes this machine's presence, follows every other machine's, carries
+// out what they ask and tracks what this machine has asked of them.
 // `liveSessions()` is asked for the sessions whenever the presence is
-// written; `onChange()` fires when another machine's view changes.
-export function createFleet({ dataDir, device, appVersion, liveSessions, onChange }) {
+// written; `onCommand(command)` carries one out and returns `{ ok, error }`;
+// `onChange()` fires when what the Bridge should show has changed.
+export function createFleet({ dataDir, device, appVersion, liveSessions, onCommand, onChange }) {
   const dir = hostDir(dataDir, device.id);
   mkdirSync(dir, { recursive: true });
   const presenceFile = path.join(dir, PRESENCE_FILE);
   const startedAt = Date.now();
   let hosts = [];
   let lastHostsJson = "";
+  // Commands this machine has sent and not yet heard back about, by id.
+  const pending = new Map();
   let publishTimer = null;
   let watchTimer = null;
   let heartbeat = null;
   let poll = null;
   let watcher = null;
+  let ticking = false;
 
   // Presence is best effort: a write refused by a busy sync folder is
   // tried again on the next heartbeat, and never takes the app down.
@@ -173,13 +258,86 @@ export function createFleet({ dataDir, device, appVersion, liveSessions, onChang
     publishTimer = setTimeout(writePresence, PUBLISH_DELAY_MS);
   }
 
-  function refresh() {
+  function refreshHosts() {
     const next = readHosts(dataDir, { exclude: device.id });
     const json = JSON.stringify(next);
-    if (json === lastHostsJson) return;
+    if (json === lastHostsJson) return false;
     lastHostsJson = json;
     hosts = next;
+    return true;
+  }
+
+  // Each request is answered then deleted, in that order, so a crash in
+  // between repeats the request rather than losing it; both commands are
+  // harmless to repeat.
+  async function handleInbox() {
+    let changed = false;
+    for (const command of readInbox(dir, { self: device.id })) {
+      let result;
+      try {
+        result = await onCommand(command);
+      } catch (error) {
+        result = { ok: false, error: error.message };
+      }
+      writeResult(dir, { id: command.id, ok: result?.ok === true, error: result?.error ?? null });
+      remove(command.file);
+      changed = true;
+    }
+    pruneResults(dir);
+    return changed;
+  }
+
+  // A sent command is pending until its result arrives or it times out; a
+  // failure stays on show for a while so the Bridge can say why.
+  function checkPending(now = Date.now()) {
+    let changed = false;
+    for (const entry of pending.values()) {
+      if (entry.error) {
+        if (now - entry.failedAt > ERROR_SHOWN_MS) {
+          pending.delete(entry.id);
+          changed = true;
+        }
+        continue;
+      }
+      const result = readResult(dataDir, entry.hostId, entry.id);
+      if (result?.ok) {
+        pending.delete(entry.id);
+        changed = true;
+      } else if (result) {
+        Object.assign(entry, { error: result.error || "Refused", failedAt: now });
+        changed = true;
+      } else if (now - entry.sentAt > PENDING_TIMEOUT_MS) {
+        Object.assign(entry, { error: "No answer from that machine", failedAt: now });
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  async function refresh() {
+    if (ticking) return;
+    ticking = true;
+    try {
+      const hostsChanged = refreshHosts();
+      const inboxChanged = await handleInbox();
+      const pendingChanged = checkPending();
+      if (hostsChanged || inboxChanged || pendingChanged) onChange();
+    } finally {
+      ticking = false;
+    }
+  }
+
+  // Only a machine that is online right now can act; a request to one that
+  // is away would wait in its inbox and then be dropped as too old.
+  function send(hostId, type, cardId) {
+    const host = hosts.find((candidate) => candidate.id === hostId);
+    if (!host) return { ok: false, error: "Unknown machine" };
+    if (!host.online) return { ok: false, error: `${host.name} is not running Hekaton right now` };
+    if (!COMMAND_TYPES.includes(type)) return { ok: false, error: "Unknown command" };
+    const command = sendCommand(dataDir, { to: hostId, from: device.id, type, cardId });
+    pending.set(command.id, { id: command.id, hostId, type, cardId, sentAt: command.sentAt, error: null });
     onChange();
+    return { ok: true, id: command.id };
   }
 
   function start() {
@@ -196,7 +354,7 @@ export function createFleet({ dataDir, device, appVersion, liveSessions, onChang
     } catch {
       // Recursive watching is not available everywhere.
     }
-    refresh();
+    return refresh();
   }
 
   // Says goodbye so the others show this machine offline at once rather than
@@ -214,7 +372,9 @@ export function createFleet({ dataDir, device, appVersion, liveSessions, onChang
     stateFile: path.join(dir, STATE_FILE),
     publish,
     refresh,
+    send,
     hosts: () => hosts,
+    pending: () => [...pending.values()],
     start,
     stop,
   };

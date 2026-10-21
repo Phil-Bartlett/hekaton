@@ -259,6 +259,11 @@
   color: var(--fg-muted);
 }
 
+.card__note--error {
+  color: var(--danger);
+  font-style: normal;
+}
+
 .host-filter {
   margin-left: 12px;
 }

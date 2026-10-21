@@ -225,6 +225,8 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
       ? state.external
       : [];
   const empty = cards.length === 0 && external.length === 0;
+  // A request sent to another machine about this card, until it answers.
+  const pendingFor = (id) => state.pending.find((entry) => entry.cardId === id) ?? null;
 
   // Dropping on a card takes its place: before it when dragging backwards,
   // after it when dragging forwards, so the last slot is reachable. Dropping
@@ -335,6 +337,7 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
                 appearance={state.settings.statusAppearance}
                 showNames={showNames}
                 drag={drag}
+                pending={pendingFor(card.id)}
               />
             ) : (
               <DormantCard
@@ -346,6 +349,7 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
                 profiles={state.profiles}
                 showNames={showNames}
                 drag={drag}
+                pending={pendingFor(card.id)}
               />
             );
           return header ? [header, body] : body;

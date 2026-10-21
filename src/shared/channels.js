@@ -40,6 +40,7 @@ export const CH = Object.freeze({
   instanceMove: "instance:move",
   instanceOrder: "instance:order",
   instanceEndOrphan: "instance:end-orphan",
+  fleetCommand: "fleet:command",
   conversationsList: "conversations:list",
   conversationsAdopt: "conversations:adopt",
   historyList: "history:list",
