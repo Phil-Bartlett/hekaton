@@ -166,8 +166,58 @@ export default function SessionCard({ session, now, fx, appearance, profiles, sh
   );
 }
 
+// Which machine a card belongs to, for cards that came through the shared data folder.
+function HostBadge({ name, online }) {
+  return (
+    <span
+      className={`card__badge card__badge--host${online ? "" : " card__badge--offline"}`}
+      title={online ? `Running on ${name}` : `${name} is not running Hekaton right now`}
+    >
+      {name}
+    </span>
+  );
+}
+
+// A session running under another machine's Hekaton, drawn from its
+// presence file. There is no window here, so nothing to focus or tile.
+export function RemoteSessionCard({ host, session, now, fx, appearance, showNames, drag }) {
+  const { dragClass, handlers } = splitDrag(drag);
+  return (
+    <article
+      className={`card card--remote${dragClass}`}
+      style={{ "--accent": session.accent ?? DEFAULT_ACCENT }}
+      {...handlers}
+    >
+      <header className="card__head">
+        <CardName profileName={session.profileName} sessionName={session.title} showNames={showNames} />
+        <HostBadge name={host.name} online={host.online} />
+        {session.remoteControlId && (
+          <span className="card__badge" title="Connected to Remote Control: the Claude app can drive this session">
+            Remote
+          </span>
+        )}
+        <Money usd={session.totalCostUsd} fx={fx} className="card__cost" />
+      </header>
+      <StateBar
+        state={session.state}
+        detail={session.currentTool}
+        since={session.since}
+        now={now}
+        appearance={appearance}
+      />
+      <ContextBar pct={session.contextPct} />
+      <p className="card__prompt" title={session.lastPrompt ?? ""}>
+        {session.lastPrompt ?? <em>No prompt yet</em>}
+      </p>
+      <CardLinks links={session.links} />
+      <p className="card__note">Running on {host.name}</p>
+    </article>
+  );
+}
+
 // A session that is not running but can be brought back on the same
-// conversation, in the same place. Dismiss removes it for good.
+// conversation, in the same place. Dismiss removes it for good. A card from
+// another machine can only be looked at: its transcript lives there.
 export function DormantCard({ entry, now, fx, appearance, profiles, showNames, drag }) {
   const { bridge } = window.hekaton;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -187,8 +237,9 @@ export function DormantCard({ entry, now, fx, appearance, profiles, showNames, d
     >
       <header className="card__head">
         <CardName profileName={entry.profileName} sessionName={entry.title} showNames={showNames} />
+        {entry.remote && <HostBadge name={entry.foreignHost} online={entry.hostOnline} />}
         <Money usd={entry.totalCostUsd} fx={fx} className="card__cost" />
-        <MenuButton open={menuOpen} onToggle={() => setMenuOpen((open) => !open)} />
+        {!entry.remote && <MenuButton open={menuOpen} onToggle={() => setMenuOpen((open) => !open)} />}
       </header>
       {menuOpen && (
         <MovePicker
@@ -241,9 +292,11 @@ export function DormantCard({ entry, now, fx, appearance, profiles, showNames, d
             Resume
           </button>
         )}
-        <button type="button" className="button--danger" onClick={() => bridge.dismissInstance(entry.id)}>
-          Dismiss
-        </button>
+        {!entry.remote && (
+          <button type="button" className="button--danger" onClick={() => bridge.dismissInstance(entry.id)}>
+            Dismiss
+          </button>
+        )}
       </div>
     </article>
   );

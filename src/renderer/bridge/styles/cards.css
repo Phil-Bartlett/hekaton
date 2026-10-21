@@ -240,6 +240,29 @@
   color: var(--ok);
 }
 
+/* ---- Cards from other machines -------------------------------------------- */
+
+.card--remote {
+  border-left-style: double;
+}
+
+.card__badge--host {
+  background: color-mix(in srgb, var(--accent) 28%, var(--bg-elevated));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 9em;
+}
+
+.card__badge--offline {
+  background: var(--control);
+  color: var(--fg-muted);
+}
+
+.host-filter {
+  margin-left: 12px;
+}
+
 /* ---- Card menu, subtitle, drag and density -------------------------------- */
 
 .card__subtitle {
