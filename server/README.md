@@ -40,7 +40,7 @@ server {
     server_name hub.example.com;
     listen 443 ssl;
     location / {
-        proxy_pass http://192.168.1.10:8600;
+        proxy_pass http://hub-host.lan:8600;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
