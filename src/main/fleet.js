@@ -11,6 +11,11 @@ import { writeJsonAtomic } from "./jsonFile.js";
 // folder is a new file in its inbox/, asking it to do something; the owner
 // deletes it once done. No two machines ever write the same file, so a sync
 // tool has nothing to merge.
+//
+// A hub (server/hub.js), when one is paired, carries the same presence and
+// commands over a socket for the machines connected to it, which is faster
+// than a synced folder and works without one. The folder stays the fallback
+// for any machine the hub cannot see.
 
 export const HOSTS_DIR = "hosts";
 export const PRESENCE_FILE = "host.json";
@@ -45,16 +50,26 @@ function remove(file) {
 
 // A machine's identity: a random id minted on first run and kept in the
 // local user-data folder, never the shared one, so a renamed machine keeps
-// its cards and two machines with the same hostname stay apart.
+// its cards and two machines with the same hostname stay apart. The hub
+// pairing (address and this machine's token) lives here too, for the same
+// reason: it is this machine's alone.
 export function readDevice(file, { hostname = os.hostname(), uuid = randomUUID } = {}) {
   const parsed = readJson(file);
   if (typeof parsed?.id === "string" && parsed.id) {
-    return { id: parsed.id, name: typeof parsed.name === "string" && parsed.name ? parsed.name : hostname };
+    const hub =
+      typeof parsed.hub?.url === "string" && typeof parsed.hub?.token === "string"
+        ? { url: parsed.hub.url, token: parsed.hub.token }
+        : null;
+    return { id: parsed.id, name: typeof parsed.name === "string" && parsed.name ? parsed.name : hostname, hub };
   }
-  const device = { id: uuid(), name: hostname };
+  const device = { id: uuid(), name: hostname, hub: null };
   mkdirSync(path.dirname(file), { recursive: true });
   writeJsonAtomic(file, device);
   return device;
+}
+
+export function writeDevice(file, device) {
+  writeJsonAtomic(file, { id: device.id, name: device.name, hub: device.hub ?? null });
 }
 
 export function hostDir(dataDir, deviceId) {
@@ -143,6 +158,18 @@ export function readHosts(dataDir, { exclude, now = Date.now() } = {}) {
     .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 
+// The folder's view and the hub's view of the other machines, as one list.
+// A machine the hub can see right now is taken from the hub, which is
+// fresher; otherwise the folder's word stands.
+export function mergeHosts(folderHosts, hubHosts) {
+  const byId = new Map(folderHosts.map((host) => [host.id, { ...host, via: "folder" }]));
+  for (const host of hubHosts) {
+    const folder = byId.get(host.id);
+    if (host.online || !folder) byId.set(host.id, { ...host, via: "hub" });
+  }
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+}
+
 // Ask another machine to do something with one of its cards. The request is
 // a new file in that machine's inbox, named by its own id.
 export function sendCommand(dataDir, { to, from, type, cardId, uuid = randomUUID, now = Date.now() }) {
@@ -212,24 +239,39 @@ export function pruneResults(dir, now = Date.now()) {
 
 // Publishes this machine's presence, follows every other machine's, carries
 // out what they ask and tracks what this machine has asked of them.
-// `liveSessions()` is asked for the sessions whenever the presence is
-// written; `onCommand(command)` carries one out and returns `{ ok, error }`;
+// `liveSessions()` and `dormantCards()` are asked for what to publish;
+// `onCommand(command)` carries one out and returns `{ ok, error }`;
 // `onChange()` fires when what the Bridge should show has changed.
-export function createFleet({ dataDir, device, appVersion, liveSessions, onCommand, onChange }) {
+export function createFleet({
+  dataDir,
+  device,
+  appVersion,
+  liveSessions,
+  dormantCards = () => [],
+  onCommand,
+  onChange,
+}) {
   const dir = hostDir(dataDir, device.id);
   mkdirSync(dir, { recursive: true });
   const presenceFile = path.join(dir, PRESENCE_FILE);
   const startedAt = Date.now();
+  let folderHosts = [];
+  let hubHosts = [];
   let hosts = [];
   let lastHostsJson = "";
   // Commands this machine has sent and not yet heard back about, by id.
   const pending = new Map();
+  let hub = null;
   let publishTimer = null;
   let watchTimer = null;
   let heartbeat = null;
   let poll = null;
   let watcher = null;
   let ticking = false;
+
+  function presencePayload() {
+    return { sessions: liveSessions().map(presenceSession), dormant: dormantCards() };
+  }
 
   // Presence is best effort: a write refused by a busy sync folder is
   // tried again on the next heartbeat, and never takes the app down.
@@ -251,6 +293,7 @@ export function createFleet({ dataDir, device, appVersion, liveSessions, onComma
     } catch (error) {
       console.error(`presence not written: ${error.message}`);
     }
+    hub?.sendPresence();
   }
 
   function publish() {
@@ -258,13 +301,23 @@ export function createFleet({ dataDir, device, appVersion, liveSessions, onComma
     publishTimer = setTimeout(writePresence, PUBLISH_DELAY_MS);
   }
 
-  function refreshHosts() {
-    const next = readHosts(dataDir, { exclude: device.id });
+  function recompute() {
+    const next = mergeHosts(folderHosts, hubHosts);
     const json = JSON.stringify(next);
     if (json === lastHostsJson) return false;
     lastHostsJson = json;
     hosts = next;
     return true;
+  }
+
+  function refreshHosts() {
+    folderHosts = readHosts(dataDir, { exclude: device.id });
+    return recompute();
+  }
+
+  function setHubHosts(next) {
+    hubHosts = next;
+    if (recompute()) onChange();
   }
 
   // Each request is answered then deleted, in that order, so a crash in
@@ -287,6 +340,19 @@ export function createFleet({ dataDir, device, appVersion, liveSessions, onComma
     return changed;
   }
 
+  function fail(entry, error, now = Date.now()) {
+    Object.assign(entry, { error, failedAt: now });
+  }
+
+  // An answer to one of this machine's requests, however it arrived.
+  function settle(id, ok, error, now = Date.now()) {
+    const entry = pending.get(id);
+    if (!entry || entry.error) return false;
+    if (ok) pending.delete(id);
+    else fail(entry, error || "Refused", now);
+    return true;
+  }
+
   // A sent command is pending until its result arrives or it times out; a
   // failure stays on show for a while so the Bridge can say why.
   function checkPending(now = Date.now()) {
@@ -299,15 +365,12 @@ export function createFleet({ dataDir, device, appVersion, liveSessions, onComma
         }
         continue;
       }
-      const result = readResult(dataDir, entry.hostId, entry.id);
-      if (result?.ok) {
-        pending.delete(entry.id);
-        changed = true;
-      } else if (result) {
-        Object.assign(entry, { error: result.error || "Refused", failedAt: now });
+      const result = entry.via === "folder" ? readResult(dataDir, entry.hostId, entry.id) : null;
+      if (result) {
+        settle(entry.id, result.ok, result.error, now);
         changed = true;
       } else if (now - entry.sentAt > PENDING_TIMEOUT_MS) {
-        Object.assign(entry, { error: "No answer from that machine", failedAt: now });
+        fail(entry, "No answer from that machine", now);
         changed = true;
       }
     }
@@ -328,16 +391,33 @@ export function createFleet({ dataDir, device, appVersion, liveSessions, onComma
   }
 
   // Only a machine that is online right now can act; a request to one that
-  // is away would wait in its inbox and then be dropped as too old.
+  // is away would wait in its inbox and then be dropped as too old. The hub
+  // carries the request when it can see the machine, the folder otherwise.
   function send(hostId, type, cardId) {
     const host = hosts.find((candidate) => candidate.id === hostId);
     if (!host) return { ok: false, error: "Unknown machine" };
     if (!host.online) return { ok: false, error: `${host.name} is not running Hekaton right now` };
     if (!COMMAND_TYPES.includes(type)) return { ok: false, error: "Unknown command" };
-    const command = sendCommand(dataDir, { to: hostId, from: device.id, type, cardId });
-    pending.set(command.id, { id: command.id, hostId, type, cardId, sentAt: command.sentAt, error: null });
+    let command;
+    let via;
+    if (host.via === "hub" && hub?.online()) {
+      via = "hub";
+      command = { id: randomUUID(), to: hostId, from: device.id, type, cardId, sentAt: Date.now() };
+      hub.sendCommand({ id: command.id, to: hostId, command: type, cardId, sentAt: command.sentAt });
+    } else {
+      via = "folder";
+      command = sendCommand(dataDir, { to: hostId, from: device.id, type, cardId });
+    }
+    pending.set(command.id, { id: command.id, hostId, type, cardId, sentAt: command.sentAt, via, error: null });
     onChange();
     return { ok: true, id: command.id };
+  }
+
+  // The hub client is made by the caller (it needs this fleet's callbacks)
+  // and handed over here; `null` takes it away again.
+  function attachHub(client) {
+    hub = client;
+    if (!client) setHubHosts([]);
   }
 
   function start() {
@@ -373,6 +453,12 @@ export function createFleet({ dataDir, device, appVersion, liveSessions, onComma
     publish,
     refresh,
     send,
+    settle: (id, ok, error) => {
+      if (settle(id, ok, error)) onChange();
+    },
+    presencePayload,
+    setHubHosts,
+    attachHub,
     hosts: () => hosts,
     pending: () => [...pending.values()],
     start,

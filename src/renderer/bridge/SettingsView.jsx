@@ -215,7 +215,72 @@ function StatusTab({ draft, patch }) {
   );
 }
 
-function PathsTab({ draft, patch, dataFolder }) {
+// Pair with, or leave, a hub (server/hub.js). The address and this
+// machine's token live in its local user-data folder, so the fields here
+// are only for pairing; the pairing code is never kept.
+function HubSection({ hub }) {
+  const { bridge } = window.hekaton;
+  const [url, setUrl] = useState(hub?.url ?? "");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  async function pair() {
+    setBusy(true);
+    setError(null);
+    const result = await bridge.pairHub(url, code);
+    setBusy(false);
+    if (result?.ok) setCode("");
+    else setError(result?.error ?? "Pairing failed");
+  }
+  const status = hub
+    ? { online: "Connected", connecting: "Connecting…", offline: "Not connected", error: hub.error || "Refused" }[
+        hub.status
+      ]
+    : null;
+  return (
+    <div className="field">
+      <span>Hub (optional)</span>
+      {hub ? (
+        <span className="field__row">
+          <input value={hub.url} readOnly />
+          <span className={`field__status field__status--${hub.status}`}>{status}</span>
+          <button type="button" onClick={() => bridge.unpairHub()}>
+            Unpair
+          </button>
+        </span>
+      ) : (
+        <>
+          <span className="field__row">
+            <input
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="wss://hub.example.com"
+              spellCheck={false}
+            />
+            <input
+              type="password"
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              placeholder="Pairing code"
+              autoComplete="off"
+            />
+            <button type="button" disabled={busy || !url.trim() || !code} onClick={pair}>
+              {busy ? "Pairing…" : "Pair"}
+            </button>
+          </span>
+          {error && <span className="field__error">{error}</span>}
+        </>
+      )}
+      <span className="field__hint">
+        A hub you run yourself (see server/README.md in the Hekaton repository) carries presence and requests between
+        your machines over a socket, so they see each other from anywhere, without waiting on a synced folder. Use
+        wss:// for anything beyond your own network. Memory notes still travel through the data folder.
+      </span>
+    </div>
+  );
+}
+
+function PathsTab({ draft, patch, dataFolder, hub }) {
   const { bridge } = window.hekaton;
   async function changeDataFolder() {
     const folder = await bridge.pickFolder();
@@ -277,6 +342,7 @@ function PathsTab({ draft, patch, dataFolder }) {
           ever written back into ~/.claude. Off removes the copies.
         </span>
       </div>
+      <HubSection hub={hub} />
       <div className="field">
         <span>Extra folders to scan for skills, agents and commands</span>
         {draft.referenceRoots.length === 0 && <span className="field__hint">None added.</span>}
@@ -405,7 +471,7 @@ function ThemeTab({ draft, patch }) {
   );
 }
 
-export default function SettingsView({ settings, dataFolder, update, onClose }) {
+export default function SettingsView({ settings, dataFolder, hub, update, onClose }) {
   const [tab, setTab] = useState("general");
   const [draft, setDraft] = useState(settings);
   const [hotkeyError, setHotkeyError] = useState(false);
@@ -434,7 +500,7 @@ export default function SettingsView({ settings, dataFolder, update, onClose }) 
     general: <GeneralTab draft={draft} patch={patch} hotkeyError={hotkeyError} update={update} />,
     terminal: <TerminalTab draft={draft} patch={patch} />,
     status: <StatusTab draft={draft} patch={patch} />,
-    paths: <PathsTab draft={draft} patch={patch} dataFolder={dataFolder} />,
+    paths: <PathsTab draft={draft} patch={patch} dataFolder={dataFolder} hub={hub} />,
     theme: <ThemeTab draft={draft} patch={patch} />,
   }[tab];
 

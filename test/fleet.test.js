@@ -10,6 +10,7 @@ import {
   readDevice,
   readHost,
   readHosts,
+  writeDevice,
 } from "../src/main/fleet.js";
 
 let dir;
@@ -29,17 +30,27 @@ describe("readDevice", () => {
   it("mints an id on first run and keeps it afterwards", () => {
     const file = path.join(dir, "local", "device.json");
     const first = readDevice(file, { hostname: "helix", uuid: () => "dev-1" });
-    expect(first).toEqual({ id: "dev-1", name: "helix" });
-    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ id: "dev-1", name: "helix" });
-    expect(readDevice(file, { hostname: "renamed", uuid: () => "dev-2" })).toEqual({ id: "dev-1", name: "helix" });
+    expect(first).toEqual({ id: "dev-1", name: "helix", hub: null });
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ id: "dev-1", name: "helix", hub: null });
+    expect(readDevice(file, { hostname: "renamed", uuid: () => "dev-2" })).toEqual({
+      id: "dev-1",
+      name: "helix",
+      hub: null,
+    });
+    writeDevice(file, { ...first, hub: { url: "wss://hub.example", token: "t0k3n" } });
+    expect(readDevice(file)).toEqual({ id: "dev-1", name: "helix", hub: { url: "wss://hub.example", token: "t0k3n" } });
   });
 
   it("falls back to the hostname for a name and starts over on a broken file", () => {
     const file = path.join(dir, "device.json");
     writeFileSync(file, '{"id":"dev-1"}');
-    expect(readDevice(file, { hostname: "helix" })).toEqual({ id: "dev-1", name: "helix" });
+    expect(readDevice(file, { hostname: "helix" })).toEqual({ id: "dev-1", name: "helix", hub: null });
     writeFileSync(file, "not json");
-    expect(readDevice(file, { hostname: "helix", uuid: () => "dev-9" })).toEqual({ id: "dev-9", name: "helix" });
+    expect(readDevice(file, { hostname: "helix", uuid: () => "dev-9" })).toEqual({
+      id: "dev-9",
+      name: "helix",
+      hub: null,
+    });
   });
 });
 

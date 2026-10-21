@@ -13,7 +13,8 @@ import { scanReference } from "./scanner.js";
 import { listConversations } from "./conversations.js";
 import { createDataDir } from "./dataDir.js";
 import { endOutsideSession } from "./endOutside.js";
-import { DEVICE_FILE, createFleet, hostDir, migrateLegacyState, readDevice } from "./fleet.js";
+import { DEVICE_FILE, createFleet, hostDir, migrateLegacyState, readDevice, writeDevice } from "./fleet.js";
+import { createHubClient, pairWithHub } from "./hubClient.js";
 import { claudeHome } from "./claudeConfig.js";
 import { MIRROR_DIR, MIRROR_INTERVAL_MS, clearMirror, syncMirror } from "./memoryMirror.js";
 import { createSessionManager } from "./sessions.js";
@@ -54,6 +55,7 @@ let sessions = null;
 let device = null;
 let dataDir = null;
 let fleet = null;
+let hub = null;
 let store = null;
 let history = null;
 let instances = null;
@@ -113,6 +115,37 @@ function applyTray(enabled) {
 }
 
 let mirrorTimer = null;
+
+function deviceFile() {
+  return path.join(app.getPath("userData"), DEVICE_FILE);
+}
+
+function hubState() {
+  if (!device.hub) return null;
+  const { status, error } = hub?.status() ?? { status: "offline", error: null };
+  return { url: device.hub.url, status, error };
+}
+
+// Connects to the paired hub, if there is one, with a client that speaks
+// for the fleet; called again whenever the pairing changes.
+function applyHub() {
+  hub?.stop();
+  hub = null;
+  fleet.attachHub(null);
+  if (!device.hub) return;
+  hub = createHubClient({
+    url: device.hub.url,
+    token: device.hub.token,
+    device: { id: device.id, name: device.name, platform: process.platform, app: app.getVersion() },
+    presence: fleet.presencePayload,
+    onHosts: fleet.setHubHosts,
+    onCommand: handleFleetCommand,
+    onResult: ({ id, ok, error }) => fleet.settle(id, ok, error),
+    onStatus: broadcast,
+  });
+  fleet.attachHub(hub);
+  hub.start();
+}
 
 // While the setting is on, Claude's memory notes are copied into this
 // machine's host folder every few minutes for the other machines to read;
@@ -238,6 +271,7 @@ function snapshot() {
     // and what this machine has asked of them that is still in flight.
     hosts: fleet.hosts(),
     pending: fleet.pending(),
+    hub: hubState(),
     canUndoTile: untile !== null,
     update: updater?.state() ?? null,
     extension: windows.extensionStatus(),
@@ -427,6 +461,7 @@ function flushForQuit() {
   } catch (error) {
     console.error(`state.json not saved on quit: ${error.message}`);
   }
+  hub?.stop();
   fleet?.stop();
 }
 
@@ -701,6 +736,39 @@ ipcMain.handle(CH.fleetCommand, (event, hostId, type, cardId) => {
   if (!fromBridge(event) || typeof hostId !== "string" || typeof cardId !== "string") return null;
   return fleet.send(hostId, type, cardId);
 });
+// Pair this machine with a hub: the code is shown once and never kept; the
+// token the hub issues goes into the local device file.
+ipcMain.handle(CH.hubPair, async (event, url, code) => {
+  if (!fromBridge(event) || typeof url !== "string" || typeof code !== "string")
+    return { ok: false, error: "Bad request" };
+  const address = url.trim();
+  if (!/^wss?:\/\//i.test(address)) return { ok: false, error: "The hub address must start with ws:// or wss://" };
+  try {
+    const token = await pairWithHub(address, code, {
+      id: device.id,
+      name: device.name,
+      platform: process.platform,
+      app: app.getVersion(),
+    });
+    device = { ...device, hub: { url: address, token } };
+    writeDevice(deviceFile(), device);
+    applyHub();
+    broadcast();
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+ipcMain.handle(CH.hubUnpair, (event) => {
+  if (!fromBridge(event)) return false;
+  hub?.unpair();
+  hub = null;
+  device = { ...device, hub: null };
+  writeDevice(deviceFile(), device);
+  fleet.attachHub(null);
+  broadcast();
+  return true;
+});
 ipcMain.handle(CH.instanceOrder, (event, ids) => {
   if (!fromBridge(event) || !Array.isArray(ids)) return null;
   instances.setOrder(ids.filter((id) => typeof id === "string"));
@@ -786,6 +854,7 @@ app.whenReady().then(async () => {
     device,
     appVersion: app.getVersion(),
     liveSessions: () => sessions.list(),
+    dormantCards: () => instances.dormant(),
     onCommand: handleFleetCommand,
     onChange: broadcast,
   });
@@ -800,6 +869,7 @@ app.whenReady().then(async () => {
   sessions = createSessionManager(onSessionEvent, telemetryServer);
   fleet.start();
   applyMemoryMirror();
+  applyHub();
   watchRegistry((rows) => {
     registry = rows;
     broadcast();

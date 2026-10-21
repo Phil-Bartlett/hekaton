@@ -472,7 +472,13 @@ function App() {
     ),
     profile: <ProfileEditor profile={view.profile} displays={state.displays} onClose={closeView} />,
     settings: (
-      <SettingsView settings={state.settings} dataFolder={state.dataFolder} update={state.update} onClose={closeView} />
+      <SettingsView
+        settings={state.settings}
+        dataFolder={state.dataFolder}
+        hub={state.hub}
+        update={state.update}
+        onClose={closeView}
+      />
     ),
   }[view.name];
 
