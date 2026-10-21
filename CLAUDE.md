@@ -49,6 +49,17 @@ out on one display (grid / columns / rows / main + stack, `src/main/tiling.js`) 
 (`settings.layouts`, keyed by card id so they apply after a relaunch). All three platforms build in CI
 (macOS dmg via `release.yml`). Next: a window-manager mode for Hyprland / Omarchy.
 
+Fleet (2026-10-21, branch `fleet`): several machines on one shared data folder. `src/main/fleet.js`
+owns it: `device.json` (random id, local userData, never synced), per-machine `hosts/<id>/state.json`
+and `host.json` (presence, 5 s heartbeat, stale after 60 s), the inbox / results mailbox for
+Terminate and "Resume on <machine>", and `mergeHosts` of the folder's view with the hub's. Rule: a
+machine only creates files in another's `inbox/`, never edits a file it did not create.
+`src/main/memoryMirror.js` copies `~/.claude` memory notes into the host folder (setting `shareMemory`,
+off by default). `server/hub.js` is the optional WebSocket relay (`ws`, pairing code, per-device token
+hashed at rest); `src/main/hubClient.js` dials it with Node's global WebSocket; the pairing lives in
+`device.json`. Verify with `npm run lint && npm test && npm run build`; the live checks drive the
+built app over CDP as `scripts/style-check.mjs` does.
+
 Traps:
 
 - pty output and state updates sent before a session window's renderer is listening are dropped by
