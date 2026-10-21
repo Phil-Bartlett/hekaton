@@ -45,7 +45,7 @@ Sessions started outside Hekaton appear too, read from Claude Code's own session
   stack, on any display; Undo puts them back. Named layouts save where every window sits and reapply
   it later.
 
-## Omarchy, Hyprland, Sway and KDE Plasma
+## Omarchy, Hyprland, Sway, KDE Plasma and GNOME
 
 Under a Wayland compositor Hekaton cannot place its own windows: Wayland gives a window no say in where
 it goes, and Electron reports the size it asked for rather than the real one. Under Hyprland (Omarchy's
@@ -74,8 +74,25 @@ its caption buttons, minimum sizes and accent frame; Pin is KWin's keep-above. T
 global shortcut, listed in System Settings as "Hekaton: raise the Bridge (keys)", that raises the Bridge
 while Hekaton is running.
 
-GNOME on Wayland has the same placement limit and no adapter; there the windows open and work, but the
-placement commands and the global hotkey do nothing.
+Under GNOME on Wayland (`XDG_CURRENT_DESKTOP` includes `GNOME`), GNOME lets no app run code in the
+shell, so Hekaton ships a GNOME Shell extension of its own (`gnome-extension/`, GNOME 45 to 51) and
+talks to it over D-Bus (`src/main/gnome.js`). The extension reports Hekaton's windows and each
+monitor's work area whenever they change, and places, pins and focuses a window on request; it only
+ever sees and moves the windows of the process that asked. As under KWin, Hekaton keeps its caption
+buttons, minimum sizes and accent frame, and Pin is always-on-top.
+
+- The first time Hekaton runs under GNOME, the Bridge title bar offers "Install GNOME extension". It
+  copies the extension to `~/.local/share/gnome-shell/extensions/` and enables it. GNOME on Wayland only
+  loads an extension at login, so log out and back in once; until then the windows open and work, but
+  the placement commands do nothing. A newer Hekaton that ships a newer extension offers "Update GNOME
+  extension" the same way.
+- The hotkey is a GNOME custom shortcut, listed in Settings, Keyboard, Custom Shortcuts as "Raise the
+  Hekaton Bridge". It relaunches Hekaton, which raises the running Bridge, so the same keys also start
+  Hekaton.
+- GNOME shortcuts never reach an input method that grabs every key. Omarchy's fcitx5 does this under
+  GNOME while a text field, Hekaton's terminal included, has focus, and Ctrl+Alt+H is also fcitx5's
+  own completion toggle. A stock GNOME install uses IBus and is not affected; on Omarchy, switch to
+  IBus for GNOME sessions.
 
 ## Running it
 
