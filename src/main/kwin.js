@@ -16,8 +16,9 @@ import path from "node:path";
 import dbus from "dbus-native";
 import { parseAccelerator } from "./accelerator.js";
 
-const OBJECT_PATH = "/io/github/philbartlett/Hekaton";
-const INTERFACE = "io.github.philbartlett.Hekaton";
+// Where KWin's scripts, and GNOME's extension (gnome.js), call this process.
+export const OBJECT_PATH = "/io/github/philbartlett/Hekaton";
+export const INTERFACE = "io.github.philbartlett.Hekaton";
 const WATCHER = "hekaton-watcher";
 
 export function isKde(env) {
