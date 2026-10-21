@@ -1,6 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { app } from "electron";
+import { HOSTS_DIR, STATE_FILE } from "./fleet.js";
 
 // Where profiles, settings, cards and history live. By default the user-data
 // folder; a pointer file there can send them to a folder a sync tool
@@ -9,6 +10,12 @@ import { app } from "electron";
 
 export const DATA_FILES = Object.freeze(["profiles.json", "settings.json", "state.json", "history.jsonl"]);
 const POINTER = "data-folder.json";
+
+// The files that follow the data folder: the shared ones, plus this
+// machine's own cards under its host folder.
+export function dataFiles(deviceId) {
+  return deviceId ? [...DATA_FILES, path.join(HOSTS_DIR, deviceId, STATE_FILE)] : [...DATA_FILES];
+}
 
 export function readPointer(file) {
   try {
@@ -27,20 +34,27 @@ export function resolveDataDir({ pointer, defaultDir, exists }) {
 
 // Copy this machine's data into a folder that has none yet. A folder that
 // already holds data wins: that is the point of pointing at one.
-export function seedDataDir(from, to, { exists = existsSync, copy = copyFileSync } = {}) {
+export function seedDataDir(
+  from,
+  to,
+  { deviceId = null, exists = existsSync, copy = copyFileSync, mkdir = mkdirSync } = {},
+) {
   if (path.resolve(from) === path.resolve(to)) return false;
-  if (DATA_FILES.some((name) => exists(path.join(to, name)))) return false;
+  const files = dataFiles(deviceId);
+  if (files.some((name) => exists(path.join(to, name)))) return false;
   let copied = false;
-  for (const name of DATA_FILES) {
+  for (const name of files) {
     const source = path.join(from, name);
     if (!exists(source)) continue;
-    copy(source, path.join(to, name));
+    const target = path.join(to, name);
+    mkdir(path.dirname(target), { recursive: true });
+    copy(source, target);
     copied = true;
   }
   return copied;
 }
 
-export function createDataDir() {
+export function createDataDir({ deviceId = null } = {}) {
   const defaultDir = app.getPath("userData");
   const pointerFile = path.join(defaultDir, POINTER);
   const dir = resolveDataDir({ pointer: readPointer(pointerFile), defaultDir, exists: existsSync });
@@ -57,7 +71,7 @@ export function createDataDir() {
       return defaultDir;
     }
     mkdirSync(next, { recursive: true });
-    seedDataDir(dir, next);
+    seedDataDir(dir, next, { deviceId });
     writeFileSync(pointerFile, JSON.stringify({ path: next }, null, 2));
     return next;
   }
