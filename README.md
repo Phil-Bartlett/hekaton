@@ -127,6 +127,34 @@ All build artifacts land in `out/` (gitignored), named by version.
 Claude Code must be installed on the machine (`~/.local/bin/claude`, or on the PATH, or set under
 Settings, Paths); Hekaton launches it and never bundles it.
 
+## Code signing policy
+
+Releases are unsigned today. Windows releases are moving to free code signing provided by
+[SignPath.io](https://about.signpath.io), with a certificate from the
+[SignPath Foundation](https://signpath.org); until then Windows SmartScreen and Defender may hold the
+installer back while they check it.
+
+Every release is built from this repository by the [Release workflow](.github/workflows/release.yml)
+on GitHub-hosted runners, from a `v*` tag; nothing is built or signed on a personal machine.
+
+- Committers and reviewers: [Phil-Bartlett](https://github.com/Phil-Bartlett),
+  [Comm4nd0](https://github.com/Comm4nd0). Changes from anyone else arrive as pull requests and are
+  reviewed by one of them before they merge.
+- Approvers: [Phil-Bartlett](https://github.com/Phil-Bartlett) approves each release for signing.
+
+## Privacy
+
+Hekaton collects no telemetry and sends nothing about you, your sessions or your files anywhere. It
+makes two kinds of request of its own, neither carrying any personal data:
+
+- GitHub's releases API, to check for a newer version. Turn this off under Settings, General, Updates.
+- [open.er-api.com](https://www.exchangerate-api.com), a few times a day, for the dollar-to-pound rate
+  used in cost figures.
+
+Hekaton's own telemetry receiver listens on 127.0.0.1 only and hears from the Claude Code sessions it
+launched. Claude Code itself talks to Anthropic under
+[Anthropic's privacy policy](https://www.anthropic.com/legal/privacy).
+
 ## Layout
 
 - `src/main/` Electron main: sessions, telemetry receiver, windows, stores, scanners.
