@@ -49,6 +49,28 @@ export function liveCard(session) {
   };
 }
 
+// A session running on another machine that shares the data folder. It
+// orders with the local cards but is drawn from the other machine's
+// presence, so there is no window here to focus or tile.
+export function remoteCard(host, session) {
+  return {
+    kind: "remote",
+    id: session.id,
+    profileName: session.profileName,
+    cwd: session.cwd,
+    startedAt: session.startedAt,
+    host,
+    session,
+  };
+}
+
+// A saved card from another machine's state file. Its transcript lives
+// there, so it can only be looked at from here.
+export function remoteDormantCard(host, entry) {
+  const remote = { ...entry, remote: true, hostId: host.id, hostOnline: host.online, foreignHost: host.name };
+  return { kind: "dormant", ...remote, entry: remote, host };
+}
+
 // Every live session, in the order the Bridge shows it when unfiltered.
 export function liveIdsInOrder(state) {
   const sort = state.settings.layout?.sort ?? "manual";

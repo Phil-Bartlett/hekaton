@@ -8,12 +8,12 @@ import MonitorMap from "./MonitorMap.jsx";
 import ProfileEditor from "./ProfileEditor.jsx";
 import ProfilesRail from "./ProfilesRail.jsx";
 import ReferenceDialog from "./ReferenceDialog.jsx";
-import SessionCard, { DormantCard, ExternalSessionCard } from "./SessionCard.jsx";
+import SessionCard, { DormantCard, ExternalSessionCard, RemoteSessionCard } from "./SessionCard.jsx";
 import SettingsView from "./SettingsView.jsx";
 import ExtensionBadge from "./ExtensionBadge.jsx";
 import UpdateBadge from "./UpdateBadge.jsx";
 import UsagePanel from "./UsagePanel.jsx";
-import { TILE_LAYOUT_LABELS, liveCard, orderCards, projectOf } from "./cards.js";
+import { TILE_LAYOUT_LABELS, liveCard, orderCards, projectOf, remoteCard, remoteDormantCard } from "./cards.js";
 import CaptionButtons from "../shared/CaptionButtons.jsx";
 import ErrorBoundary from "../shared/ErrorBoundary.jsx";
 import { applyTheme, resolveTheme } from "../shared/themes.js";
@@ -43,15 +43,17 @@ function useNow(intervalMs = 1000) {
 const EXTERNAL_FILTER = "__external__";
 
 // Filter row above the cards: every profile that has a card, plus sessions
-// running outside Hekaton. Counts cover live and saved cards.
+// running outside Hekaton. Counts cover live and saved cards, here and on
+// the other machines sharing the data folder.
 function ProfileFilter({ state, filter, onChange }) {
   const counts = new Map();
-  for (const card of [...state.sessions.map((s) => s.profile), ...state.dormant]) {
+  const remote = state.hosts.flatMap((host) => [...host.sessions, ...host.dormant]);
+  for (const card of [...state.sessions.map((s) => s.profile), ...state.dormant, ...remote]) {
     const name = card.profileName ?? card.name;
     counts.set(name, (counts.get(name) ?? 0) + 1);
   }
   const names = [...new Set([...state.profiles.map((p) => p.name), ...counts.keys()])];
-  const total = state.sessions.length + state.dormant.length;
+  const total = state.sessions.length + state.dormant.length + remote.length;
   const option = (value, label, count) => (
     <button
       key={value}
@@ -104,6 +106,26 @@ function LayoutControls({ layout, onChange }) {
     <span className="layout-controls">
       {select("sort", SORTS, "Sort cards")}
       {select("density", VIEWS, "View")}
+    </span>
+  );
+}
+
+// Which machine's cards to show, offered once another machine shares the
+// data folder. "all" and "local" are reserved; anything else is a host id.
+function HostFilter({ state, value, onChange }) {
+  if (state.hosts.length === 0) return null;
+  return (
+    <span className="layout-controls host-filter">
+      <select aria-label="Machine" value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="all">All machines</option>
+        <option value="local">{state.device.name} (here)</option>
+        {state.hosts.map((host) => (
+          <option key={host.id} value={host.id}>
+            {host.name}
+            {host.online ? "" : " (offline)"}
+          </option>
+        ))}
+      </select>
     </span>
   );
 }
@@ -176,15 +198,32 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
   const { bridge } = window.hekaton;
   const layout = { sort: "manual", density: "comfortable", ...state.settings.layout };
   const showNames = state.settings.showSessionNames !== false;
+  const [hostFilter, setHostFilter] = useState("all");
   const showOwn = filter !== EXTERNAL_FILTER;
-  const showExternal = filter === "all" || filter === EXTERNAL_FILTER;
+  const showLocal = showOwn && (hostFilter === "all" || hostFilter === "local");
   const byProfile = (name) => filter === "all" || filter === name;
-  const live = showOwn ? state.sessions.filter((s) => byProfile(s.profile.name)).map(liveCard) : [];
-  const dormant = showOwn
+  const live = showLocal ? state.sessions.filter((s) => byProfile(s.profile.name)).map(liveCard) : [];
+  const dormant = showLocal
     ? state.dormant.filter((d) => byProfile(d.profileName)).map((d) => ({ kind: "dormant", ...d, entry: d }))
     : [];
-  const cards = orderCards([...live, ...dormant], state.order, layout.sort);
-  const external = showExternal ? state.external : [];
+  // A card recorded before machines were told apart may sit in two state
+  // files; the local copy is the one to show.
+  const own = new Set([...state.sessions.map((s) => s.id), ...state.dormant.map((d) => d.id)]);
+  const remote = showOwn
+    ? state.hosts
+        .filter((host) => hostFilter === "all" || hostFilter === host.id)
+        .flatMap((host) => [
+          ...host.sessions.filter((s) => byProfile(s.profileName) && !own.has(s.id)).map((s) => remoteCard(host, s)),
+          ...host.dormant
+            .filter((e) => byProfile(e.profileName) && !own.has(e.id))
+            .map((e) => remoteDormantCard(host, e)),
+        ])
+    : [];
+  const cards = orderCards([...live, ...dormant, ...remote], state.order, layout.sort);
+  const external =
+    (filter === "all" || filter === EXTERNAL_FILTER) && (hostFilter === "all" || hostFilter === "local")
+      ? state.external
+      : [];
   const empty = cards.length === 0 && external.length === 0;
 
   // Dropping on a card takes its place: before it when dragging backwards,
@@ -242,6 +281,7 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
       />
       <div className="filter-row">
         <ProfileFilter state={state} filter={filter} onChange={setFilter} />
+        <HostFilter state={state} value={hostFilter} onChange={setHostFilter} />
         <TileControls state={state} ids={cards.filter((card) => card.kind === "live").map((card) => card.id)} />
         <LayoutControls layout={layout} onChange={(next) => bridge.saveSettings({ layout: next })} />
       </div>
@@ -282,6 +322,17 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
                 fx={state.fx}
                 appearance={state.settings.statusAppearance}
                 profiles={state.profiles}
+                showNames={showNames}
+                drag={drag}
+              />
+            ) : card.kind === "remote" ? (
+              <RemoteSessionCard
+                key={card.id}
+                host={card.host}
+                session={card.session}
+                now={now}
+                fx={state.fx}
+                appearance={state.settings.statusAppearance}
                 showNames={showNames}
                 drag={drag}
               />
