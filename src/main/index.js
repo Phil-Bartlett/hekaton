@@ -13,7 +13,9 @@ import { scanReference } from "./scanner.js";
 import { listConversations } from "./conversations.js";
 import { createDataDir } from "./dataDir.js";
 import { endOutsideSession } from "./endOutside.js";
-import { DEVICE_FILE, createFleet, migrateLegacyState, readDevice } from "./fleet.js";
+import { DEVICE_FILE, createFleet, hostDir, migrateLegacyState, readDevice } from "./fleet.js";
+import { claudeHome } from "./claudeConfig.js";
+import { MIRROR_DIR, MIRROR_INTERVAL_MS, clearMirror, syncMirror } from "./memoryMirror.js";
 import { createSessionManager } from "./sessions.js";
 import { attentionFor } from "./state.js";
 import { createStore } from "./store.js";
@@ -108,6 +110,30 @@ function applyTray(enabled) {
     tray.destroy();
     tray = null;
   }
+}
+
+let mirrorTimer = null;
+
+// While the setting is on, Claude's memory notes are copied into this
+// machine's host folder every few minutes for the other machines to read;
+// turning it off takes the copies out again.
+function applyMemoryMirror() {
+  clearInterval(mirrorTimer);
+  mirrorTimer = null;
+  const out = path.join(fleet.dir, MIRROR_DIR);
+  if (!store.settings().shareMemory) {
+    clearMirror(out);
+    return;
+  }
+  const run = () => {
+    try {
+      syncMirror(claudeHome(), out);
+    } catch (error) {
+      console.error(`memory mirror not updated: ${error.message}`);
+    }
+  };
+  run();
+  mirrorTimer = setInterval(run, MIRROR_INTERVAL_MS);
 }
 
 // The Bridge keeps a card for every session it has launched, running or not;
@@ -687,6 +713,13 @@ ipcMain.handle(CH.referenceList, (event) =>
     ? scanReference({
         projectDirs: store.profiles().map((profile) => profile.cwd),
         customRoots: store.settings().referenceRoots,
+        // Memory notes: this machine's own, then whatever each other machine has chosen to share.
+        memory: [
+          { dir: claudeHome(), source: `${device.name} (here)` },
+          ...fleet
+            .hosts()
+            .map((host) => ({ dir: path.join(hostDir(dataDir.dir, host.id), MIRROR_DIR), source: host.name })),
+        ],
       })
     : [],
 );
@@ -700,6 +733,7 @@ ipcMain.handle(CH.settingsSave, (event, patch) => {
   const hotkeyOk = "hotkey" in patch ? applyHotkey(saved.hotkey) : true;
   if ("keepInTray" in patch) applyTray(saved.keepInTray);
   if ("launchAtLogin" in patch) setLaunchAtLogin(saved.launchAtLogin);
+  if ("shareMemory" in patch) applyMemoryMirror();
   broadcast();
   // Session windows restyle live: fonts, status colours and theme all come from here.
   for (const session of sessions.list()) {
@@ -765,6 +799,7 @@ app.whenReady().then(async () => {
   usage = createUsage();
   sessions = createSessionManager(onSessionEvent, telemetryServer);
   fleet.start();
+  applyMemoryMirror();
   watchRegistry((rows) => {
     registry = rows;
     broadcast();

@@ -103,6 +103,44 @@ function scanRoot(root, source, into) {
   }
 }
 
+function readMemoryEntry(file, source, project) {
+  let text;
+  let modifiedAt;
+  try {
+    text = readFileSync(file, "utf8");
+    modifiedAt = statSync(file).mtimeMs;
+  } catch {
+    return null;
+  }
+  const { data, body } = parseFrontmatter(text);
+  return {
+    kind: "memory",
+    name: data.name || path.basename(file),
+    description: data.description ?? "",
+    project,
+    file,
+    source,
+    modifiedAt,
+    preview: body.slice(0, PREVIEW_CHARS),
+  };
+}
+
+// A `~/.claude`-shaped root's CLAUDE.md and projects/<slug>/memory/*.md:
+// the real one on this machine, or another machine's mirror of its own.
+function scanMemoryRoot(root, source, into) {
+  const user = path.join(root, "CLAUDE.md");
+  if (existsSync(user)) into.push(readMemoryEntry(user, source, null));
+  for (const project of listDir(path.join(root, "projects"))) {
+    if (!project.isDirectory()) continue;
+    const memory = path.join(root, "projects", project.name, "memory");
+    for (const entry of listDir(memory)) {
+      if (entry.isFile() && entry.name.endsWith(".md")) {
+        into.push(readMemoryEntry(path.join(memory, entry.name), source, project.name));
+      }
+    }
+  }
+}
+
 function scanPlugins(home, into) {
   const cache = path.join(home, "plugins", "cache");
   for (const marketplace of listDir(cache)) {
@@ -119,8 +157,10 @@ function scanPlugins(home, into) {
 }
 
 // `projectDirs` are the working directories of the launch profiles; `customRoots`
-// are folders the user added, scanned both as-is and as `<root>/.claude`.
-export function scanReference({ projectDirs = [], customRoots = [], home = claudeHome() } = {}) {
+// are folders the user added, scanned both as-is and as `<root>/.claude`;
+// `memory` lists `~/.claude`-shaped roots whose CLAUDE.md and memory notes
+// are shown, each under the machine it belongs to.
+export function scanReference({ projectDirs = [], customRoots = [], home = claudeHome(), memory = [] } = {}) {
   const found = [];
   scanRoot(home, "User", found);
   for (const dir of new Set(projectDirs)) {
@@ -131,8 +171,20 @@ export function scanReference({ projectDirs = [], customRoots = [], home = claud
     scanRoot(root, `Custom ${path.basename(root)}`, found);
     if (isDir(path.join(root, ".claude"))) scanRoot(path.join(root, ".claude"), `Custom ${path.basename(root)}`, found);
   }
+  for (const { dir, source } of memory) scanMemoryRoot(dir, source, found);
+  // Memory notes keep the machines in the order given (this one first) and
+  // the user file ahead of the projects; everything else sorts by name.
+  const machineRank = new Map(memory.map(({ source }, index) => [source, index]));
   const seen = new Set();
   return found
     .filter((entry) => entry && !seen.has(entry.file) && seen.add(entry.file))
-    .sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
+    .sort(
+      (a, b) =>
+        a.kind.localeCompare(b.kind) ||
+        (a.kind === "memory"
+          ? machineRank.get(a.source) - machineRank.get(b.source) ||
+            (a.project ?? "").localeCompare(b.project ?? "") ||
+            a.name.localeCompare(b.name)
+          : a.name.localeCompare(b.name)),
+    );
 }

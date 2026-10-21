@@ -29,6 +29,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   keepInTray: true,
   launchAtLogin: false,
   autoUpdate: true,
+  // Off until asked: memory notes go into the shared folder only on purpose.
+  shareMemory: false,
 });
 
 // Launch profiles and app settings, each one JSON file in the data folder.

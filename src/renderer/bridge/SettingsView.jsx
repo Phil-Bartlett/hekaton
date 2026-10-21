@@ -260,7 +260,21 @@ function PathsTab({ draft, patch, dataFolder }) {
         </span>
         <span className="field__hint">
           Point this at a OneDrive or Syncthing folder to carry profiles, settings, cards and history between machines.
-          Hekaton restarts to switch. A card recorded on another machine shows its name and resumes only there.
+          Hekaton restarts to switch. Every machine on the folder shows the others&apos; sessions and saved cards, can
+          end a session or resume a card where it lives, and keeps its own files under hosts/.
+        </span>
+        <label>
+          <input
+            type="checkbox"
+            checked={draft.shareMemory === true}
+            onChange={(event) => patch({ shareMemory: event.target.checked })}
+          />{" "}
+          Share Claude&apos;s memory notes with the other machines
+        </label>
+        <span className="field__hint">
+          Copies ~/.claude/CLAUDE.md and each project&apos;s memory notes into this machine&apos;s host folder every few
+          minutes, where the other machines list them under Memory in the reference browser. One way only: nothing is
+          ever written back into ~/.claude. Off removes the copies.
         </span>
       </div>
       <div className="field">

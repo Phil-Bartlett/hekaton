@@ -4,6 +4,7 @@ const TABS = [
   { kind: "command", label: "Slash Commands" },
   { kind: "skill", label: "Skills" },
   { kind: "agent", label: "Agents" },
+  { kind: "memory", label: "Memory" },
 ];
 
 function Entry({ entry }) {
@@ -12,7 +13,9 @@ function Entry({ entry }) {
     entry.model && ["Model", entry.model],
     entry.tools && ["Tools", entry.tools],
     entry.argumentHint && ["Args", entry.argumentHint],
-    entry.kind !== "agent" && !entry.modelInvocable && ["", "user-invoked only"],
+    entry.kind === "memory" && ["Project", entry.project ?? "all projects"],
+    entry.kind === "memory" && entry.modifiedAt && ["Changed", new Date(entry.modifiedAt).toLocaleString()],
+    entry.kind !== "agent" && entry.kind !== "memory" && !entry.modelInvocable && ["", "user-invoked only"],
   ].filter(Boolean);
   return (
     <article className="ref-entry">
@@ -112,7 +115,13 @@ export default function ReferenceDialog({ initialKind, settings, onClose }) {
         </nav>
         <div className="dialog__list">
           {entries === null && <p className="dialog__empty">Scanning…</p>}
-          {entries !== null && shown.length === 0 && <p className="dialog__empty">Nothing found for this kind.</p>}
+          {entries !== null && shown.length === 0 && (
+            <p className="dialog__empty">
+              {kind === "memory"
+                ? "No memory notes here, and no other machine is sharing any (Settings, Paths)."
+                : "Nothing found for this kind."}
+            </p>
+          )}
           {groups.map((source) => (
             <section key={source} className="ref-group">
               <h2 className="ref-group__title">{source}</h2>
