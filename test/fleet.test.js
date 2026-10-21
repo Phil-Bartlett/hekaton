@@ -179,7 +179,7 @@ describe("readHosts", () => {
 });
 
 describe("createFleet", () => {
-  it("publishes presence under its own host folder and reads the others", () => {
+  it("publishes presence under its own host folder and reads the others", async () => {
     const now = Date.now();
     writeJson(path.join(dir, "hosts", "dev-2", "host.json"), {
       name: "laptop",
@@ -205,13 +205,13 @@ describe("createFleet", () => {
       },
     });
     expect(fleet.stateFile).toBe(path.join(dir, "hosts", "dev-1", "state.json"));
-    fleet.start();
+    await fleet.start();
     const presence = JSON.parse(readFileSync(path.join(dir, "hosts", "dev-1", "host.json"), "utf8"));
     expect(presence).toMatchObject({ id: "dev-1", name: "helix", app: "0.4.0", schema: 1 });
     expect(presence.sessions.map((s) => s.id)).toEqual(["s1"]);
     expect(changes).toBe(1);
     expect(fleet.hosts().map((h) => [h.name, h.online, h.sessions.length])).toEqual([["laptop", true, 1]]);
-    fleet.refresh();
+    await fleet.refresh();
     expect(changes).toBe(1);
     fleet.stop();
     const stopped = JSON.parse(readFileSync(path.join(dir, "hosts", "dev-1", "host.json"), "utf8"));

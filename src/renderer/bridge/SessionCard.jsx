@@ -180,8 +180,10 @@ function HostBadge({ name, online }) {
 
 // A session running under another machine's Hekaton, drawn from its
 // presence file. There is no window here, so nothing to focus or tile.
-export function RemoteSessionCard({ host, session, now, fx, appearance, showNames, drag }) {
+export function RemoteSessionCard({ host, session, now, fx, appearance, showNames, drag, pending }) {
+  const { bridge } = window.hekaton;
   const { dragClass, handlers } = splitDrag(drag);
+  const waiting = Boolean(pending) && !pending.error;
   return (
     <article
       className={`card card--remote${dragClass}`}
@@ -210,7 +212,20 @@ export function RemoteSessionCard({ host, session, now, fx, appearance, showName
         {session.lastPrompt ?? <em>No prompt yet</em>}
       </p>
       <CardLinks links={session.links} />
-      <p className="card__note">Running on {host.name}</p>
+      {pending?.error ? (
+        <p className="card__note card__note--error">{pending.error}</p>
+      ) : (
+        <p className="card__note">Running on {host.name}</p>
+      )}
+      <button
+        type="button"
+        className="card__terminate"
+        disabled={waiting}
+        title={`Ask ${host.name} to end this session`}
+        onClick={() => bridge.sendToHost(host.id, "terminate", session.id)}
+      >
+        {waiting ? "Ending…" : `Terminate on ${host.name}`}
+      </button>
     </article>
   );
 }
@@ -218,10 +233,12 @@ export function RemoteSessionCard({ host, session, now, fx, appearance, showName
 // A session that is not running but can be brought back on the same
 // conversation, in the same place. Dismiss removes it for good. A card from
 // another machine can only be looked at: its transcript lives there.
-export function DormantCard({ entry, now, fx, appearance, profiles, showNames, drag }) {
+export function DormantCard({ entry, now, fx, appearance, profiles, showNames, drag, pending }) {
   const { bridge } = window.hekaton;
   const [menuOpen, setMenuOpen] = useState(false);
   const { dragClass, handlers } = splitDrag(drag);
+  // A request to the machine that holds this card, not yet answered.
+  const waiting = Boolean(pending) && !pending.error;
   // Still alive somewhere else: resuming would start a second copy.
   const orphan = Boolean(entry.runningPid);
   const elsewhere = entry.foreignHost ?? null;
@@ -261,6 +278,7 @@ export function DormantCard({ entry, now, fx, appearance, profiles, showNames, d
       <p className="card__prompt" title={entry.lastPrompt ?? entry.firstPrompt ?? ""}>
         {entry.lastPrompt ?? entry.firstPrompt ?? <em>No prompt recorded</em>}
       </p>
+      {pending?.error && <p className="card__note card__note--error">{pending.error}</p>}
       <div className="card__actions">
         {orphan ? (
           <button
@@ -274,6 +292,20 @@ export function DormantCard({ entry, now, fx, appearance, profiles, showNames, d
             }}
           >
             {ending ? "Ending…" : "End outside copy"}
+          </button>
+        ) : entry.remote ? (
+          <button
+            type="button"
+            className="button--primary"
+            disabled={!entry.hostOnline || waiting}
+            title={
+              entry.hostOnline
+                ? `Ask ${entry.foreignHost} to reopen this conversation there`
+                : `${entry.foreignHost} is not running Hekaton right now`
+            }
+            onClick={() => bridge.sendToHost(entry.hostId, "resume", entry.id)}
+          >
+            {waiting ? "Resuming…" : `Resume on ${entry.foreignHost}`}
           </button>
         ) : (
           <button

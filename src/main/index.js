@@ -208,8 +208,10 @@ function snapshot() {
     dormant: annotateOrphans(instances.dormant()),
     order: instances.order(),
     external: externalSessions(),
-    // Every other machine sharing the data folder, with what it is running.
+    // Every other machine sharing the data folder, with what it is running,
+    // and what this machine has asked of them that is still in flight.
     hosts: fleet.hosts(),
+    pending: fleet.pending(),
     canUndoTile: untile !== null,
     update: updater?.state() ?? null,
     extension: windows.extensionStatus(),
@@ -406,6 +408,28 @@ function terminateSession(id) {
   forgetSession(id);
   windows.closeSessionWindow(id);
   broadcast();
+}
+
+// What another machine may ask of this one, through its inbox: end one of
+// the sessions running here, or bring one of the cards saved here back.
+// Each answers for a card that is this machine's own, and only for the
+// states the Bridge here would allow too.
+function handleFleetCommand({ type, cardId }) {
+  if (type === "terminate") {
+    if (!sessions.get(cardId)) return { ok: false, error: "Not running here" };
+    terminateSession(cardId);
+    return { ok: true };
+  }
+  if (type === "resume") {
+    const entry = instances.get(cardId);
+    if (!entry) return { ok: false, error: "No such card here" };
+    if (entry.live) return { ok: true };
+    if (annotateOrphans([entry])[0].runningPid) {
+      return { ok: false, error: "That conversation is running outside Hekaton there" };
+    }
+    return resumeInstance(cardId) ? { ok: true } : { ok: false, error: "Could not start the session there" };
+  }
+  return { ok: false, error: "Unknown command" };
 }
 
 // Resume picks the saved profile back up when it still exists, otherwise a
@@ -646,6 +670,11 @@ ipcMain.handle(CH.instanceEndOrphan, async (event, id) => {
   broadcast();
   return ended;
 });
+// Ask another machine to end one of its sessions or resume one of its cards.
+ipcMain.handle(CH.fleetCommand, (event, hostId, type, cardId) => {
+  if (!fromBridge(event) || typeof hostId !== "string" || typeof cardId !== "string") return null;
+  return fleet.send(hostId, type, cardId);
+});
 ipcMain.handle(CH.instanceOrder, (event, ids) => {
   if (!fromBridge(event) || !Array.isArray(ids)) return null;
   instances.setOrder(ids.filter((id) => typeof id === "string"));
@@ -723,6 +752,7 @@ app.whenReady().then(async () => {
     device,
     appVersion: app.getVersion(),
     liveSessions: () => sessions.list(),
+    onCommand: handleFleetCommand,
     onChange: broadcast,
   });
   migrateLegacyState({
