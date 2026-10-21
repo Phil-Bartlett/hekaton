@@ -65,6 +65,8 @@ contextBridge.exposeInMainWorld("hekaton", {
     reorder: (ids) => ipcRenderer.invoke(CH.instanceOrder, ids),
     endOrphan: (id) => ipcRenderer.invoke(CH.instanceEndOrphan, id),
     sendToHost: (hostId, type, cardId) => ipcRenderer.invoke(CH.fleetCommand, hostId, type, cardId),
+    pairHub: (url, code) => ipcRenderer.invoke(CH.hubPair, url, code),
+    unpairHub: () => ipcRenderer.invoke(CH.hubUnpair),
     conversations: () => ipcRenderer.invoke(CH.conversationsList),
     adopt: (sessionId, profileId) => ipcRenderer.invoke(CH.conversationsAdopt, sessionId, profileId),
     history: () => ipcRenderer.invoke(CH.historyList),

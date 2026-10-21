@@ -116,3 +116,25 @@
 .settings__body .field__row--centred > button {
   align-self: center;
 }
+
+/* ---- Hub pairing ----------------------------------------------------------- */
+
+.field__status {
+  flex: none;
+  font-size: 12px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.field__status--online {
+  color: var(--ok);
+}
+
+.field__status--error {
+  color: var(--danger);
+}
+
+.field__error {
+  font-size: 12px;
+  color: var(--danger);
+}
