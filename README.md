@@ -27,8 +27,9 @@ Sessions started outside Hekaton appear too, read from Claude Code's own session
 - Remote Control: a profile flag launches with `--remote-control`, so the Claude app on a phone can
   drive the session; the card shows a Remote badge while it is connected.
 - Shared data folder: profiles, settings, cards and history can live in a OneDrive or Syncthing folder
-  and follow you between machines. A card made on another machine names it and resumes only there,
-  because the transcript stays on that machine.
+  and follow you between machines. Every machine on the folder sees the others' live sessions and
+  saved cards, can end a session or resume a card on the machine that holds it, and can read the
+  others' Claude memory notes; see "Several machines" below.
 - Terminal: Shift+Enter for a newline, Ctrl+F find, links open in the browser, extra `--add-dir`
   folders per profile.
 - Artifacts and links: published claude.ai artifacts and pull requests a session produces show as
@@ -44,6 +45,32 @@ Sessions started outside Hekaton appear too, read from Claude Code's own session
 - Arranging: Tile lays the live session windows out as a grid, columns, rows or a main window beside a
   stack, on any display; Undo puts them back. Named layouts save where every window sits and reapply
   it later.
+
+## Several machines
+
+Point every machine's data folder (Settings, Paths) at one folder a sync tool carries between them, and
+each Bridge shows the whole fleet:
+
+- Each machine writes only under `hosts/<its id>/` in that folder: its saved cards (`state.json`) and a
+  presence file (`host.json`) with a heartbeat and its live sessions. Nothing is ever written to the
+  same file from two machines, so the sync tool has nothing to merge. The id is minted on first run and
+  kept in the local user-data folder, so a renamed machine keeps its cards.
+- The other machines' live sessions appear as cards with the machine's name on them, read-only apart
+  from Terminate; their saved cards offer "Resume on <machine>". A machine whose heartbeat is more than
+  a minute old shows as offline. A filter picks one machine or all.
+- A request to another machine is a new file in its `inbox/`; that machine carries it out, answers
+  under its own `results/` and deletes the request. A request older than five minutes (the machine was
+  away) is dropped, not acted on late. The card shows the wait and any refusal.
+- With "Share Claude's memory notes" on, a machine copies `~/.claude/CLAUDE.md` and each project's
+  memory notes into its host folder every few minutes, and every machine lists all of them under
+  Memory in the reference browser. One way only: nothing is written back into `~/.claude`, and turning
+  the setting off removes the copies. It is off until you turn it on.
+
+OneDrive and SharePoint are fine for the saved cards and the memory notes; for live presence they can
+lag by a minute or more, so a Syncthing or SMB folder gives a truer picture. For machines that are not on
+one network, or for live presence without waiting on a sync tool, run the hub in `server/` and pair each
+machine with it under Settings, Paths: presence and requests then go over a socket, with the folder as
+the fallback. See `server/README.md`.
 
 ## Omarchy, Hyprland, Sway, KDE Plasma and GNOME
 
