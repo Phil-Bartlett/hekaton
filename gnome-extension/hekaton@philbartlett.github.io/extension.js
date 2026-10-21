@@ -16,7 +16,6 @@ const BUS_NAME = "io.github.philbartlett.HekatonShell";
 const OBJECT_PATH = "/io/github/philbartlett/HekatonShell";
 const CLIENT_PATH = "/io/github/philbartlett/Hekaton";
 const CLIENT_INTERFACE = "io.github.philbartlett.Hekaton";
-const VERSION = 1;
 
 // Moves and resizes signal on every frame of a drag, so reports are batched.
 const REPORT_DELAY_MS = 50;
@@ -158,10 +157,13 @@ export default class HekatonExtension extends Extension {
     this._reportSource = 0;
   }
 
+  // Version is metadata.json's hekaton-version, which Hekaton compares with
+  // the copy it ships to tell when the running extension is out of date.
   _service() {
+    const version = this.metadata["hekaton-version"];
     return {
       get Version() {
-        return VERSION;
+        return version;
       },
       WatchAsync: (_params, invocation) => this._watch(invocation),
       PlaceAsync: ([id, x, y, width, height], invocation) =>

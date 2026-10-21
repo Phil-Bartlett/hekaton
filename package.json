@@ -134,6 +134,12 @@
       ],
       "category": "Development",
       "executableName": "hekaton",
+      "extraResources": [
+        {
+          "from": "gnome-extension",
+          "to": "gnome-extension"
+        }
+      ],
       "artifactName": "Hekaton-${version}-${arch}.${ext}",
       "desktop": {
         "entry": {

@@ -51,4 +51,10 @@ export default [
     },
     rules,
   },
+  {
+    // GNOME Shell's own JavaScript (GJS): ES modules with the shell's globals.
+    files: ["gnome-extension/**/*.js"],
+    languageOptions: { ...esm, globals: { global: "readonly", console: "readonly" } },
+    rules,
+  },
 ];

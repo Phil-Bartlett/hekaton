@@ -1,11 +1,12 @@
 import { BrowserWindow, dialog, screen } from "electron";
 import path from "node:path";
 import { CH } from "../shared/channels.js";
+import { createGnome, EXTENSION_UUID } from "./gnome.js";
 import { createHyprland, displayMatching } from "./hyprland.js";
 import { createKWin } from "./kwin.js";
 import { createSway } from "./sway.js";
 import { MIN_HEIGHT, MIN_WIDTH } from "./placement.js";
-import { IS_WINDOWS, titleBarOptions } from "./platform.js";
+import { IS_WINDOWS, resourcePath, titleBarOptions } from "./platform.js";
 import { tileRects } from "./tiling.js";
 
 // The main bundle lives at dist/main.cjs, so __dirname is dist/.
@@ -63,8 +64,9 @@ function sameBounds(a, b) {
 
 // `onSessionBounds(id)` and `onBridgeBounds(bounds)` fire, throttled, whenever
 // a window moves or resizes, so the monitor map follows and the layout is saved.
-// `onHotkey()` fires when a compositor that calls back (KWin) sees the hotkey.
-export function createWindowManager({ onSessionBounds, onBridgeBounds, onHotkey }) {
+// `onHotkey()` fires when a compositor that calls back (KWin) sees the hotkey,
+// `onCompositorStatus()` when the state of GNOME's extension changes.
+export function createWindowManager({ onSessionBounds, onBridgeBounds, onHotkey, onCompositorStatus }) {
   const sessionWindows = new Map();
   // Title-bar state the renderer draws, keyed by BrowserWindow id: the
   // maximise toggle for every window, always-on-top and the close lock for
@@ -72,12 +74,20 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds, onHotkey 
   const chromeState = new Map();
   let bridge = null;
 
-  // Under Hyprland, Sway or KDE's KWin every window is read and placed
+  // Under Hyprland, Sway, KDE's KWin or GNOME every window is read and placed
   // through the compositor. A session window opens under a title naming its
   // session, so the compositor's record of it can be found, and takes its
   // real title once that record has been seen.
   const onChange = () => compositorChanged();
-  const compositor = createHyprland({ onChange }) ?? createSway({ onChange }) ?? createKWin({ onChange, onHotkey });
+  const compositor =
+    createHyprland({ onChange }) ??
+    createSway({ onChange }) ??
+    createKWin({ onChange, onHotkey }) ??
+    createGnome({
+      onChange,
+      onStatus: onCompositorStatus,
+      extensionDir: resourcePath("gnome-extension", EXTENSION_UUID),
+    });
   const openingTitles = new Map();
   const compositorSessions = new Map();
   let lastBridgeBounds = null;
@@ -512,6 +522,9 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds, onHotkey 
 
   return {
     windowManager: compositor?.name ?? null,
+    // Only GNOME needs an extension of Hekaton's own; null elsewhere.
+    extensionStatus: () => compositor?.extension?.() ?? null,
+    installExtension: () => compositor?.installExtension?.(),
     compositor,
     listDisplays,
     boundsOnScreen,

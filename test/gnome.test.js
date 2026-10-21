@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   BINDING_PATH,
   createGnome,
+  enableCommands,
+  EXTENSION_UUID,
+  extensionStatus,
   formatStrv,
   gnomeKeys,
   hotkeyCommands,
@@ -70,5 +73,45 @@ describe("hotkeyCommands", () => {
       ["reset", SCHEMA, "command"],
       ["reset", SCHEMA, "binding"],
     ]);
+  });
+});
+
+describe("enableCommands", () => {
+  const OTHER_EXTENSION = "appindicatorsupport@rgcjonas.gmail.com";
+
+  it("adds the extension to the enabled list beside the user's own", () => {
+    expect(enableCommands(`['${OTHER_EXTENSION}']`, "@as []")).toEqual([
+      ["set", "org.gnome.shell", "enabled-extensions", `['${OTHER_EXTENSION}', '${EXTENSION_UUID}']`],
+    ]);
+  });
+
+  it("takes it off the disabled list, where it would win", () => {
+    expect(enableCommands(`['${EXTENSION_UUID}']`, `['${EXTENSION_UUID}', '${OTHER_EXTENSION}']`)).toEqual([
+      ["set", "org.gnome.shell", "disabled-extensions", `['${OTHER_EXTENSION}']`],
+    ]);
+  });
+
+  it("changes nothing once it is enabled", () => {
+    expect(enableCommands(`['${EXTENSION_UUID}']`, "@as []")).toEqual([]);
+  });
+});
+
+describe("extensionStatus", () => {
+  it("is ready once the shell runs the shipped version or newer", () => {
+    expect(extensionStatus({ running: 1, shipped: 1, installed: 1 })).toBe("ready");
+    expect(extensionStatus({ running: 2, shipped: 1, installed: 2 })).toBe("ready");
+  });
+
+  it("is missing when nothing is installed", () => {
+    expect(extensionStatus({ running: null, shipped: 1, installed: null })).toBe("missing");
+  });
+
+  it("waits for a login once installed but not running", () => {
+    expect(extensionStatus({ running: null, shipped: 1, installed: 1 })).toBe("login");
+    expect(extensionStatus({ running: 1, shipped: 2, installed: 2 })).toBe("login");
+  });
+
+  it("is outdated when an older copy is both installed and running", () => {
+    expect(extensionStatus({ running: 1, shipped: 2, installed: 1 })).toBe("outdated");
   });
 });

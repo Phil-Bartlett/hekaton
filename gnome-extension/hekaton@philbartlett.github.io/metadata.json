@@ -3,5 +3,6 @@
   "name": "Hekaton",
   "description": "Lets Hekaton arrange, pin and focus its own windows. GNOME gives an app no way to place its windows on Wayland, so Hekaton asks this extension to do it.",
   "shell-version": ["45", "46", "47", "48", "49", "50", "51"],
-  "url": "https://github.com/Phil-Bartlett/hekaton"
+  "url": "https://github.com/Phil-Bartlett/hekaton",
+  "hekaton-version": 1
 }

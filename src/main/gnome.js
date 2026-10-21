@@ -10,15 +10,24 @@
 // frameless one, so as under KWin Hekaton keeps its caption buttons,
 // minimums and accent frame. The hotkey is a GNOME custom shortcut that
 // relaunches Hekaton, as under Hyprland.
+//
+// Hekaton installs the extension itself, into the user's own extensions
+// folder. GNOME on Wayland only loads an extension at login, so a new or
+// updated one starts working after the user logs out and back in.
 
 import { execFile } from "node:child_process";
+import { cpSync, readFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { promisify } from "node:util";
 import dbus from "dbus-native";
 import { parseAccelerator } from "./accelerator.js";
 import { INTERFACE as CLIENT_INTERFACE, OBJECT_PATH as CLIENT_PATH, readReport } from "./kwin.js";
 
+export const EXTENSION_UUID = "hekaton@philbartlett.github.io";
 const SHELL_NAME = "io.github.philbartlett.HekatonShell";
 const SHELL_PATH = "/io/github/philbartlett/HekatonShell";
+const SHELL_SETTINGS = "org.gnome.shell";
 
 const MEDIA_KEYS = "org.gnome.settings-daemon.plugins.media-keys";
 const BINDING_LIST = "custom-keybindings";
@@ -80,12 +89,55 @@ export function hotkeyCommands(listText, keys, command) {
   ];
 }
 
+// The gsettings calls that turn the extension on at the next login, given
+// the shell's lists of enabled and disabled extensions.
+export function enableCommands(enabledText, disabledText) {
+  const enabled = parseStrv(enabledText);
+  const disabled = parseStrv(disabledText);
+  return [
+    ...(enabled.includes(EXTENSION_UUID)
+      ? []
+      : [["set", SHELL_SETTINGS, "enabled-extensions", formatStrv([...enabled, EXTENSION_UUID])]]),
+    ...(disabled.includes(EXTENSION_UUID)
+      ? [["set", SHELL_SETTINGS, "disabled-extensions", formatStrv(disabled.filter((uuid) => uuid !== EXTENSION_UUID))]]
+      : []),
+  ];
+}
+
+// Where the extension stands, from the version the shell is running (null
+// when none is), the one Hekaton ships and the one installed for the user
+// (null when none is): "ready", "missing" or "outdated" until Hekaton
+// installs it, or "login" once installed and waiting for the next login.
+export function extensionStatus({ running, shipped, installed }) {
+  if (running !== null && running >= shipped) return "ready";
+  if (installed === null) return "missing";
+  if (running === null || installed >= shipped) return "login";
+  return "outdated";
+}
+
+function metadataVersion(dir) {
+  try {
+    return JSON.parse(readFileSync(path.join(dir, "metadata.json"), "utf8"))["hekaton-version"] ?? 0;
+  } catch {
+    return null;
+  }
+}
+
 // `onChange` fires whenever a window or monitor differs from the last
-// report. Returns null outside GNOME.
-export function createGnome({ env = process.env, onChange = () => {} } = {}) {
+// report, `onStatus` when the extension's status changes. `extensionDir` is
+// the copy of the extension Hekaton ships. Returns null outside GNOME.
+export function createGnome({ env = process.env, extensionDir, onChange = () => {}, onStatus = () => {} } = {}) {
   if (!isGnome(env)) return null;
+  const installedDir = path.join(
+    env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share"),
+    "gnome-shell",
+    "extensions",
+    EXTENSION_UUID,
+  );
   let bus = null;
   let ready = null;
+  let running = null;
+  let status = null;
   let displays = [];
   let windows = new Map();
   let signature = "";
@@ -111,13 +163,53 @@ export function createGnome({ env = process.env, onChange = () => {} } = {}) {
     onChange();
   }
 
+  function updateStatus() {
+    const next = extensionStatus({
+      running,
+      shipped: metadataVersion(extensionDir),
+      installed: metadataVersion(installedDir),
+    });
+    if (next === status) return;
+    status = next;
+    onStatus();
+  }
+
+  // The running extension's version, or null when the shell has none.
+  async function runningVersion() {
+    try {
+      // dbus-native unwraps the variant Get answers with.
+      return await bus.invoke({
+        destination: SHELL_NAME,
+        path: SHELL_PATH,
+        interface: "org.freedesktop.DBus.Properties",
+        member: "Get",
+        signature: "ss",
+        body: [SHELL_NAME, "Version"],
+      });
+    } catch (error) {
+      if (error.dbusName === "org.freedesktop.DBus.Error.ServiceUnknown") return null;
+      throw error;
+    }
+  }
+
   async function connect() {
     bus = dbus.sessionBus();
     bus.exportInterface({ Report: received }, CLIENT_PATH, {
       name: CLIENT_INTERFACE,
       methods: { Report: ["s", ""] },
     });
-    await shell("Watch");
+    running = await runningVersion();
+    updateStatus();
+    if (running !== null) await shell("Watch");
+  }
+
+  async function installExtension() {
+    cpSync(extensionDir, installedDir, { recursive: true, force: true });
+    const [enabled, disabled] = await Promise.all(
+      ["enabled-extensions", "disabled-extensions"].map((key) => run("gsettings", ["get", SHELL_SETTINGS, key])),
+    );
+    for (const args of enableCommands(enabled.stdout, disabled.stdout)) await run("gsettings", args);
+    updateStatus();
   }
 
   function start() {
@@ -160,6 +252,8 @@ export function createGnome({ env = process.env, onChange = () => {} } = {}) {
     name: "gnome",
     tiling: false,
     start,
+    extension: () => status,
+    installExtension,
     // The extension reports changes itself.
     refresh: () => {},
     displays: () => displays,
