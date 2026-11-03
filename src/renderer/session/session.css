@@ -62,6 +62,10 @@
   pointer-events: auto;
 }
 
+.terminal-host.has-scrollback .xterm-scrollable-element > .scrollbar.vertical {
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+
 .activity-tray {
   flex: none;
   width: 360px;

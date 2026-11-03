@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { mix } from "../shared/color.js";
 import { applyTheme, resolveTheme } from "../shared/themes.js";
 import ActivityTray from "./ActivityTray.jsx";
 import FindBar from "./FindBar.jsx";
@@ -14,6 +15,11 @@ function terminalTheme(theme) {
     foreground: theme.fg,
     cursor: theme.fg,
     selectionBackground: "#3a3d41",
+    // xterm's defaults are the foreground at 20% alpha, which on a dark
+    // theme is a sliver nobody notices. Solid blends read as a scrollbar.
+    scrollbarSliderBackground: mix(theme.bg, theme.fg, 0.45),
+    scrollbarSliderHoverBackground: mix(theme.bg, theme.fg, 0.6),
+    scrollbarSliderActiveBackground: mix(theme.bg, theme.fg, 0.75),
   };
 }
 
