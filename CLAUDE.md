@@ -65,6 +65,8 @@ Traps:
 - pty output and state updates sent before a session window's renderer is listening are dropped by
   Electron, and Claude's TUI does not redraw on its own. Main buffers output per session and only
   streams live once the renderer calls `pty.attach()`, which returns the buffered scrollback.
+- xterm 6's scrollbar is VS Code's overlay: it fades out 500 ms after the pointer leaves, so without
+  the `has-scrollback` override in `session.css` a wheel-less mouse cannot reach the scrollback at all.
 - Window chrome is entirely ours. The native `titleBarOverlay` paints an opaque box that cuts the accent
   frame, so Windows / Linux get caption buttons from `shared/CaptionButtons.jsx` via `window:control`.
   Session windows use `roundedCorners: false`; Windows hides about one row at the top of a frameless

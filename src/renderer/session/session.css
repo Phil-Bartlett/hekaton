@@ -54,6 +54,14 @@
   position: relative;
 }
 
+/* xterm's own rule hides the scrollbar between hovers (.invisible, opacity 0,
+   no pointer events). While the terminal has scrollback, Terminal.jsx marks
+   the host and the bar stays where a mouse without a wheel can drag it. */
+.terminal-host.has-scrollback .xterm-scrollable-element > .scrollbar.invisible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .activity-tray {
   flex: none;
   width: 360px;

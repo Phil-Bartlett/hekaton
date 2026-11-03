@@ -82,6 +82,17 @@ export default function Terminal({ theme, fontFamily, fontSize, platform, osBuil
     }
     term.attachCustomKeyEventHandler((event) => handleKey(term, event, () => onFindRef.current?.()));
 
+    // xterm 6 draws a VS Code style overlay scrollbar that fades out half a
+    // second after the pointer leaves it, so a mouse without a wheel has no
+    // way back into the scrollback. Flag the host while there is anything
+    // above the viewport; session.css then keeps the scrollbar on show.
+    const showScrollbar = () => hostRef.current?.classList.toggle("has-scrollback", term.buffer.active.baseY > 0);
+    const scrollbarWatch = [
+      term.onScroll(showScrollbar),
+      term.onLineFeed(showScrollbar),
+      term.buffer.onBufferChange(showScrollbar),
+    ];
+
     // Subscribe before attaching: the attach reply carries everything drawn
     // so far, and live chunks only start flowing after it.
     const offData = window.hekaton.pty.onData((data) => term.write(data));
@@ -97,6 +108,7 @@ export default function Terminal({ theme, fontFamily, fontSize, platform, osBuil
 
     return () => {
       observer.disconnect();
+      scrollbarWatch.forEach((watch) => watch.dispose());
       offData();
       input.dispose();
       resize.dispose();
