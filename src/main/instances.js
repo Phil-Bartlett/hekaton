@@ -40,11 +40,16 @@ export function summarise(session, { bounds = null, pinned = false, trayOpen = f
 }
 
 function readState(file) {
-  const empty = { bridge: null, instances: [], order: [] };
+  const empty = { bridge: null, instances: [], order: [], resume: [] };
   try {
     const parsed = JSON.parse(readFileSync(file, "utf8"));
     if (parsed?.version !== STATE_VERSION || !Array.isArray(parsed.instances)) return empty;
-    return { bridge: parsed.bridge ?? null, instances: parsed.instances, order: parsed.order ?? [] };
+    return {
+      bridge: parsed.bridge ?? null,
+      instances: parsed.instances,
+      order: parsed.order ?? [],
+      resume: Array.isArray(parsed.resume) ? parsed.resume : [],
+    };
   } catch {
     return empty;
   }
@@ -58,12 +63,21 @@ export function createInstances({ file }) {
   let bridge = loaded.bridge;
   // Manual card order on the Bridge; ids not listed sort after the listed ones.
   let order = loaded.order.filter((id) => entries.has(id));
+  // The cards that were live at the last clean quit, so they can reopen on the
+  // next start. Written by setResumeOnStart, read once when the app starts.
+  let resumeIds = loaded.resume.filter((id) => entries.has(id));
   let timer = null;
 
   function saveNow() {
     clearTimeout(timer);
     timer = null;
-    writeJsonAtomic(file, { version: STATE_VERSION, bridge, order, instances: [...entries.values()] });
+    writeJsonAtomic(file, {
+      version: STATE_VERSION,
+      bridge,
+      order,
+      resume: resumeIds,
+      instances: [...entries.values()],
+    });
   }
 
   // A save that still fails after writeJsonAtomic's retries is tried again a
@@ -152,6 +166,11 @@ export function createInstances({ file }) {
     save();
   }
 
+  function setResumeOnStart(ids) {
+    resumeIds = ids.filter((id) => entries.has(id));
+    save();
+  }
+
   return {
     record,
     addDormant,
@@ -165,6 +184,8 @@ export function createInstances({ file }) {
     dormant: () => [...entries.values()].filter((entry) => !entry.live),
     bridgeBounds: () => bridge,
     setBridgeBounds,
+    setResumeOnStart,
+    resumeOnStart: () => [...resumeIds],
     saveNow,
   };
 }

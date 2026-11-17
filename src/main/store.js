@@ -28,6 +28,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   notifyFinished: true,
   keepInTray: true,
   launchAtLogin: false,
+  restoreSessions: true,
   autoUpdate: true,
   // Off until asked: memory notes go into the shared folder only on purpose.
   shareMemory: false,

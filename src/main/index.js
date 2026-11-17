@@ -1,4 +1,4 @@
-import { app, dialog, globalShortcut, ipcMain, Notification, shell } from "electron";
+import { app, clipboard, dialog, globalShortcut, ipcMain, Notification, shell } from "electron";
 import { existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import os from "node:os";
@@ -426,6 +426,14 @@ function resumeInstance(id) {
   );
 }
 
+// On start, bring back the sessions that were open at the last quit, each as
+// the same card it was — id, window position, pin and tray state — on its
+// conversation. The cards are already on the Bridge dormant; this resumes them
+// without the user clicking each one.
+function restoreSessions() {
+  for (const id of instances.resumeOnStart()) resumeInstance(id);
+}
+
 // Moving a card re-labels it under another profile; a running session keeps
 // its folder until it is next resumed, when the transcript path carries it over.
 function moveInstance(id, profileId) {
@@ -450,10 +458,13 @@ function moveInstance(id, profileId) {
 // quit, or a Windows shutdown, never loses the cards.
 function flushForQuit() {
   if (!sessions || !instances) return;
-  for (const session of sessions.list()) {
+  const live = sessions.list();
+  for (const session of live) {
     recordHistory(session);
     instances.markDormant(session.id, instanceSummary(session));
   }
+  // Whatever was open at this quit is what reopens on the next start.
+  instances.setResumeOnStart(live.map((session) => session.id));
   // Quitting cannot wait for a later retry; a failure here is only logged,
   // and the cards keep their state from the last save that went through.
   try {
@@ -548,6 +559,12 @@ ipcMain.on(CH.windowControl, (event, action) => windows.controlWindow(event.send
 // schemes are allowed through.
 ipcMain.on(CH.linkOpen, (event, url) => {
   if (typeof url === "string" && /^(https?|mailto):/i.test(url)) shell.openExternal(url);
+});
+// The renderer's async clipboard API rejects silently unless its window holds
+// OS focus and does not reach the Windows clipboard history, so a terminal copy
+// (our Ctrl+C and Claude's own OSC 52) writes through the native clipboard here.
+ipcMain.on(CH.clipboardWrite, (event, text) => {
+  if (typeof text === "string" && text.length > 0) clipboard.writeText(text);
 });
 ipcMain.on(CH.windowTray, (event, id, open) => {
   if (ownsInstance(event, id)) sessions.setTray(id, open === true);
@@ -880,6 +897,10 @@ app.whenReady().then(async () => {
   applyHotkey(store.settings().hotkey);
   updater = createUpdater({ onChange: broadcast, enabled: () => store.settings().autoUpdate });
   updater.start();
+
+  // A silent login start (--hidden) stays in the tray, so it does not spawn the
+  // last set of sessions; the user reopens them from the Bridge when they want.
+  if (store.settings().restoreSessions && !process.argv.includes("--hidden")) restoreSessions();
 
   // `hekaton --launch=<profile name or id>` opens a session straight away.
   const launch = argValue("launch");

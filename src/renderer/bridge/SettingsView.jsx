@@ -130,6 +130,14 @@ function GeneralTab({ draft, patch, hotkeyError, update }) {
             />{" "}
             Start Hekaton when I sign in (hidden in the tray)
           </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.restoreSessions !== false}
+              onChange={(event) => patch({ restoreSessions: event.target.checked })}
+            />{" "}
+            Reopen the sessions that were open when I last closed Hekaton
+          </label>
         </span>
       </label>
       <label className="field">

@@ -10,6 +10,25 @@ import "@xterm/xterm/css/xterm.css";
 // Code reads it as "newline inside the prompt" rather than "submit".
 const SHIFT_ENTER_SEQUENCE = "\x1b\r";
 
+// OSC 52 is how Claude Code (and other TUIs) copy to the system clipboard
+// through the terminal. xterm has no built-in handler, so the write is dropped
+// and the clipboard keeps its previous contents. Decode "Pc;<base64>" and send
+// the text to the native clipboard; a "?" payload is a read request we ignore.
+function writeOsc52ToClipboard(data) {
+  const separator = data.indexOf(";");
+  if (separator === -1) return true;
+  const encoded = data.slice(separator + 1);
+  if (!encoded || encoded === "?") return true;
+  try {
+    const bytes = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
+    const text = new TextDecoder().decode(bytes);
+    if (text) window.hekaton.clipboard.write(text);
+  } catch {
+    // Not valid base64: nothing to copy.
+  }
+  return true;
+}
+
 function handleKey(term, event, onFind) {
   if (event.type !== "keydown") return true;
   if (event.key === "Enter" && event.shiftKey) {
@@ -24,7 +43,7 @@ function handleKey(term, event, onFind) {
   // Ctrl+C copies when there is a selection, as Windows Terminal does;
   // otherwise it reaches Claude as the interrupt it expects.
   if (event.ctrlKey && !event.shiftKey && event.key === "c" && term.hasSelection()) {
-    navigator.clipboard.writeText(term.getSelection());
+    window.hekaton.clipboard.write(term.getSelection());
     term.clearSelection();
     return false;
   }
@@ -81,6 +100,7 @@ export default function Terminal({ theme, fontFamily, fontSize, platform, osBuil
       // No WebGL context: xterm falls back to its DOM renderer.
     }
     term.attachCustomKeyEventHandler((event) => handleKey(term, event, () => onFindRef.current?.()));
+    const osc52 = term.parser.registerOscHandler(52, writeOsc52ToClipboard);
 
     // xterm 6 draws a VS Code style overlay scrollbar that fades out half a
     // second after the pointer leaves it, so a mouse without a wheel has no
@@ -112,6 +132,7 @@ export default function Terminal({ theme, fontFamily, fontSize, platform, osBuil
       offData();
       input.dispose();
       resize.dispose();
+      osc52.dispose();
       term.dispose();
       termRef.current = null;
       if (searchRef) searchRef.current = null;

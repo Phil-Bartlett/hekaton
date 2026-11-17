@@ -26,6 +26,9 @@ contextBridge.exposeInMainWorld("hekaton", {
   link: {
     open: (url) => ipcRenderer.send(CH.linkOpen, url),
   },
+  clipboard: {
+    write: (text) => ipcRenderer.send(CH.clipboardWrite, text),
+  },
   window: {
     pin: (pinned) => ipcRenderer.send(CH.windowPin, instanceId, pinned),
     closeLock: (locked) => ipcRenderer.send(CH.windowCloseLock, instanceId, locked),
