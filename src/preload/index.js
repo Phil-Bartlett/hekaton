@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { CH } from "../shared/channels.js";
 
 function flagValue(name) {
@@ -28,6 +28,11 @@ contextBridge.exposeInMainWorld("hekaton", {
   },
   clipboard: {
     write: (text) => ipcRenderer.send(CH.clipboardWrite, text),
+  },
+  files: {
+    // File.path is gone in Electron 44; webUtils resolves a dropped file to its
+    // absolute path on disk without reading it.
+    pathFor: (file) => webUtils.getPathForFile(file),
   },
   window: {
     pin: (pinned) => ipcRenderer.send(CH.windowPin, instanceId, pinned),

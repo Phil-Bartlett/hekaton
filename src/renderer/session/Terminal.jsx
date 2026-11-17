@@ -138,14 +138,42 @@ export default function Terminal({ theme, fontFamily, fontSize, platform, osBuil
       if (!termRef.current || document.activeElement?.tagName === "INPUT") return;
       termRef.current.focus();
     };
-    window.addEventListener("focus", refocus);
+    // Returning from another window or the clipboard-history flyout, the OS
+    // delivers the paste a beat after focus returns, so defer a frame to be the
+    // target by then.
+    const refocusLater = () => requestAnimationFrame(refocus);
+    window.addEventListener("focus", refocusLater);
     hostRef.current.addEventListener("mousedown", refocus);
+
+    // Dropping files onto the terminal inserts their paths, so a file can be
+    // handed to Claude by dragging it in. Paths with spaces are quoted; paste
+    // goes through xterm so bracketed-paste mode is respected.
+    const onDragOver = (event) => event.preventDefault();
+    const onDrop = (event) => {
+      event.preventDefault();
+      const dropped = Array.from(event.dataTransfer?.files ?? []);
+      if (dropped.length === 0 || !termRef.current) return;
+      const paths = dropped
+        .map((file) => window.hekaton.files.pathFor(file))
+        .filter(Boolean)
+        .map((filePath) => (/\s/.test(filePath) ? `"${filePath}"` : filePath));
+      if (paths.length === 0) return;
+      termRef.current.focus();
+      termRef.current.paste(paths.join(" "));
+    };
+    // On the window, not the host: a drop anywhere in the session feeds the
+    // terminal, and preventing the default stops Electron navigating to the
+    // dropped file.
+    window.addEventListener("dragover", onDragOver);
+    window.addEventListener("drop", onDrop);
 
     return () => {
       observer.disconnect();
       scrollbarWatch.forEach((watch) => watch.dispose());
-      window.removeEventListener("focus", refocus);
+      window.removeEventListener("focus", refocusLater);
       hostRef.current?.removeEventListener("mousedown", refocus);
+      window.removeEventListener("dragover", onDragOver);
+      window.removeEventListener("drop", onDrop);
       offData();
       input.dispose();
       resize.dispose();
