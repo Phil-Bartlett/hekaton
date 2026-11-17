@@ -50,6 +50,17 @@ function handleKey(term, event, onFind) {
     event.preventDefault();
     return false;
   }
+  // Ctrl/Cmd+V pastes (this is also how the Windows clipboard history delivers
+  // a picked entry). xterm otherwise swallows Ctrl+V as a control character and
+  // the browser's paste never fires, so read the clipboard ourselves and paste
+  // it through xterm; an image is left to Claude via the raw control char.
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "v") {
+    window.hekaton.clipboard.read().then(({ text, hasImage }) => {
+      if (hasImage) window.hekaton.pty.write("\x16");
+      else if (text) term.paste(text);
+    });
+    return false;
+  }
   return true;
 }
 

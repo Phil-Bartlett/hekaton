@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld("hekaton", {
   },
   clipboard: {
     write: (text) => ipcRenderer.send(CH.clipboardWrite, text),
+    read: () => ipcRenderer.invoke(CH.clipboardRead),
   },
   files: {
     // File.path is gone in Electron 44; webUtils resolves a dropped file to its

@@ -580,6 +580,12 @@ ipcMain.on(CH.clipboardWrite, (event, text) => {
     clipboard.writeText(text);
   }
 });
+// Paste reads go through the native clipboard; hasImage lets the terminal leave
+// an image paste to Claude instead of pasting the (empty) text.
+ipcMain.handle(CH.clipboardRead, () => ({
+  text: clipboard.readText(),
+  hasImage: !clipboard.readImage().isEmpty(),
+}));
 ipcMain.on(CH.windowTray, (event, id, open) => {
   if (ownsInstance(event, id)) sessions.setTray(id, open === true);
 });

@@ -11,6 +11,7 @@ export const CH = Object.freeze({
   windowTray: "window:tray",
   linkOpen: "link:open",
   clipboardWrite: "clipboard:write",
+  clipboardRead: "clipboard:read",
   windowChrome: "window:chrome",
   ptyAttach: "pty:attach",
   ptyWrite: "pty:write",
