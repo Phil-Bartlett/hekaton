@@ -120,7 +120,8 @@ function GeneralTab({ draft, patch, hotkeyError, update }) {
               checked={draft.keepInTray !== false}
               onChange={(event) => patch({ keepInTray: event.target.checked })}
             />{" "}
-            Keep running in the tray when every window is closed
+            Keep running in the tray when every window is closed (uncheck to make closing the Bridge quit Hekaton and
+            reopen your sessions next launch)
           </label>
           <label>
             <input

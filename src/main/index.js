@@ -48,6 +48,15 @@ const windows = createWindowManager({
     broadcast();
   },
   onBridgeBounds: (bounds) => instances?.setBridgeBounds(bounds),
+  // With the tray off the Bridge is the main window: closing it quits Hekaton,
+  // which records the open sessions (flushForQuit) so the next launch reopens
+  // them. With the tray on, closing the Bridge keeps running in the tray.
+  onBridgeClose: () => {
+    if (store && !store.settings().keepInTray && !quitting) {
+      quitting = true;
+      app.quit();
+    }
+  },
   onHotkey: () => showBridge(),
   onCompositorStatus: () => broadcast(),
 });

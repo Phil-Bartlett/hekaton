@@ -66,7 +66,7 @@ function sameBounds(a, b) {
 // a window moves or resizes, so the monitor map follows and the layout is saved.
 // `onHotkey()` fires when a compositor that calls back (KWin) sees the hotkey,
 // `onCompositorStatus()` when the state of GNOME's extension changes.
-export function createWindowManager({ onSessionBounds, onBridgeBounds, onHotkey, onCompositorStatus }) {
+export function createWindowManager({ onSessionBounds, onBridgeBounds, onBridgeClose, onHotkey, onCompositorStatus }) {
   const sessionWindows = new Map();
   // Title-bar state the renderer draws, keyed by BrowserWindow id: the
   // maximise toggle for every window, always-on-top and the close lock for
@@ -204,6 +204,7 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds, onHotkey,
     bridge.on("page-title-updated", (event) => event.preventDefault());
     bridge.on("closed", () => {
       bridge = null;
+      onBridgeClose?.();
     });
     const bridgeMoved = throttled(() => {
       if (!bridge || bridge.isDestroyed()) return;
