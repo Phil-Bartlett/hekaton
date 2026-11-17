@@ -573,7 +573,12 @@ ipcMain.on(CH.linkOpen, (event, url) => {
 // OS focus and does not reach the Windows clipboard history, so a terminal copy
 // (our Ctrl+C and Claude's own OSC 52) writes through the native clipboard here.
 ipcMain.on(CH.clipboardWrite, (event, text) => {
-  if (typeof text === "string" && text.length > 0) clipboard.writeText(text);
+  // Skip an identical write: Claude may put the same text on the clipboard
+  // natively as well as through OSC 52, and a second write adds a duplicate
+  // entry to the Windows clipboard history.
+  if (typeof text === "string" && text.length > 0 && text !== clipboard.readText()) {
+    clipboard.writeText(text);
+  }
 });
 ipcMain.on(CH.windowTray, (event, id, open) => {
   if (ownsInstance(event, id)) sessions.setTray(id, open === true);

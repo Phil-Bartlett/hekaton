@@ -45,6 +45,9 @@ function handleKey(term, event, onFind) {
   if (event.ctrlKey && !event.shiftKey && event.key === "c" && term.hasSelection()) {
     window.hekaton.clipboard.write(term.getSelection());
     term.clearSelection();
+    // Stop the browser's own copy of the selection, which would otherwise put
+    // the same text on the clipboard a second time.
+    event.preventDefault();
     return false;
   }
   return true;
@@ -126,9 +129,23 @@ export default function Terminal({ theme, fontFamily, fontSize, platform, osBuil
       if (scrollback) term.write(scrollback);
     });
 
+    // Paste (Ctrl+V, right-click, the Windows clipboard history) only reaches
+    // the terminal while its hidden textarea holds focus; switching to another
+    // window or the clipboard-history flyout blurs it, so refocus when this
+    // window comes back and on any click in the pane. The find input keeps its
+    // focus, so a search in progress is left alone.
+    const refocus = () => {
+      if (!termRef.current || document.activeElement?.tagName === "INPUT") return;
+      termRef.current.focus();
+    };
+    window.addEventListener("focus", refocus);
+    hostRef.current.addEventListener("mousedown", refocus);
+
     return () => {
       observer.disconnect();
       scrollbarWatch.forEach((watch) => watch.dispose());
+      window.removeEventListener("focus", refocus);
+      hostRef.current?.removeEventListener("mousedown", refocus);
       offData();
       input.dispose();
       resize.dispose();
