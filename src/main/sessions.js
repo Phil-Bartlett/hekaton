@@ -20,6 +20,7 @@ function publicView({
   stopTail: _stopTail,
   scrollback: _scrollback,
   scrollbackChars: _scrollbackChars,
+  killed: _killed,
   ...session
 }) {
   return session;
@@ -125,6 +126,7 @@ export function createSessionManager(emit, telemetryServer) {
       settingsPath,
       stopTail: null,
       attached: false,
+      killed: false,
       scrollback: [],
       scrollbackChars: 0,
       term,
@@ -150,13 +152,27 @@ export function createSessionManager(emit, telemetryServer) {
     return publicView(session);
   }
 
+  // node-pty's Windows kill closes the pseudoconsole on every call and only
+  // forgets the handle once the exit arrives, so a second kill in between
+  // frees it twice and the heap corruption takes the whole app down. A kill
+  // can also arrive from the window just as the pty exits, which throws.
+  function killTerm(session) {
+    if (session.exitCode !== null || session.killed) return;
+    session.killed = true;
+    try {
+      session.term.kill();
+    } catch {
+      // pty already gone
+    }
+  }
+
   // Forget a session: kills the pty if it is still running.
   function remove(id) {
     const session = sessions.get(id);
     if (!session) return;
     sessions.delete(id);
     session.stopTail?.();
-    if (session.exitCode === null) session.term.kill();
+    killTerm(session);
   }
 
   function applyHookPayload(id, payload) {
@@ -197,7 +213,7 @@ export function createSessionManager(emit, telemetryServer) {
     return session.scrollback.join("");
   }
 
-  // A write/resize/kill can arrive from the window just as the pty exits; once
+  // A write/resize can arrive from the window just as the pty exits; once
   // its fd is closed node-pty throws (EBADF on resize), which would crash the
   // main process, so skip a dead session and swallow the close race.
   function write(id, data) {
@@ -223,12 +239,7 @@ export function createSessionManager(emit, telemetryServer) {
 
   function kill(id) {
     const session = sessions.get(id);
-    if (!session || session.exitCode !== null) return;
-    try {
-      session.term.kill();
-    } catch {
-      // pty already gone
-    }
+    if (session) killTerm(session);
   }
 
   function get(id) {
@@ -241,7 +252,7 @@ export function createSessionManager(emit, telemetryServer) {
   }
 
   function killAll() {
-    for (const session of sessions.values()) session.term.kill();
+    for (const session of sessions.values()) killTerm(session);
   }
 
   return {
