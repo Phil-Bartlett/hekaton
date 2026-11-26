@@ -8,6 +8,7 @@ import { createFx } from "./fx.js";
 import { createHistory } from "./history.js";
 import { createInstances, summarise } from "./instances.js";
 import { computeBounds } from "./placement.js";
+import { busyReason, CLOSE_CHOICES, closePrompt, quitPrompt } from "./closeGuard.js";
 import { createExternalTails } from "./external.js";
 import { readRegistry, watchRegistry } from "./registry.js";
 import { scanReference } from "./scanner.js";
@@ -53,11 +54,14 @@ const windows = createWindowManager({
   // which records the open sessions (flushForQuit) so the next launch reopens
   // them. With the tray on, closing the Bridge keeps running in the tray.
   onBridgeClose: () => {
-    if (store && !store.settings().keepInTray && !quitting) {
-      quitting = true;
-      app.quit();
-    }
+    if (store && !store.settings().keepInTray && !quitting) quitNow();
   },
+  // Asked while the Bridge is still on screen, so "Cancel" leaves it there.
+  onBridgeClosing: () => {
+    if (!store || store.settings().keepInTray || quitting) return true;
+    return confirmQuit();
+  },
+  onSessionClosing: confirmSessionClose,
   onHotkey: () => showBridge(),
   onCompositorStatus: () => broadcast(),
 });
@@ -74,6 +78,9 @@ let usage = null;
 let tray = null;
 let updater = null;
 let quitting = false;
+// Windows and a quit that are waiting for their sessions to finish a turn.
+const closeWhenIdle = new Set();
+let quitWhenIdle = false;
 let registry = [];
 let externalTails = null;
 // Where the windows were before the last tile, for its undo.
@@ -115,8 +122,7 @@ function applyTray(enabled) {
       iconPath: iconPath(),
       onShowBridge: showBridge,
       onQuit: () => {
-        quitting = true;
-        app.quit();
+        if (confirmQuit()) quitNow();
       },
     });
   } else if (!enabled && tray) {
@@ -278,7 +284,12 @@ function snapshot() {
     dataFolder: { path: dataDir.dir, isDefault: dataDir.isDefault },
     device,
     profiles: store.profiles(),
-    sessions: sessions.list().map((session) => ({ ...session, bounds: windows.sessionBounds(session.id) })),
+    sessions: sessions.list().map((session) => ({
+      ...session,
+      bounds: windows.sessionBounds(session.id),
+      closingWhenFinished: closeWhenIdle.has(session.id),
+    })),
+    quitWhenFinished: quitWhenIdle,
     dormant: annotateOrphans(instances.dormant()),
     order: instances.order(),
     external: externalSessions(),
@@ -333,6 +344,7 @@ function onSessionEvent(event, id, payload) {
     recordHistory(sessions.get(id));
     recordInstance(id);
     broadcast();
+    closeFinished(id);
   }
   if (event === "update") {
     logUpdate(payload);
@@ -345,6 +357,7 @@ function onSessionEvent(event, id, payload) {
     notifyIfNeeded(payload);
     recordInstance(id);
     broadcast();
+    closeFinished(id);
   }
   if (event === "activity") windows.sendToSession(id, CH.sessionActivity, payload);
 }
@@ -492,9 +505,54 @@ function flushForQuit() {
 }
 
 function terminateSession(id) {
+  closeWhenIdle.delete(id);
   forgetSession(id);
   windows.closeSessionWindow(id);
   broadcast();
+}
+
+// Close protection: a window or a quit that would cut a turn short asks
+// first, and can wait for the turn instead. Off in Settings, nothing asks.
+function busySessions() {
+  if (store.settings().closeProtection === false) return [];
+  return sessions.list().filter((session) => busyReason(session) !== null);
+}
+
+// Answers a session window's close: undefined when nothing is in flight (the
+// window's own rules then apply), true to close, false to keep it open.
+function confirmSessionClose(id) {
+  const session = sessions.get(id);
+  if (quitting || !session || !busySessions().some((busy) => busy.id === id)) return undefined;
+  const choice = dialog.showMessageBoxSync(windows.sessionWindow(id), closePrompt(session));
+  if (choice === CLOSE_CHOICES.now) return true;
+  if (choice === CLOSE_CHOICES.whenFinished) closeWhenIdle.add(id);
+  else closeWhenIdle.delete(id);
+  broadcast();
+  return false;
+}
+
+// True when the quit may go ahead now. "Quit when finished" and "Cancel"
+// both hold it back; asking again is how a pending quit is called off.
+function confirmQuit() {
+  const busy = busySessions();
+  if (busy.length === 0) return true;
+  const choice = dialog.showMessageBoxSync(windows.bridgeWindow() ?? undefined, quitPrompt(busy));
+  if (choice === CLOSE_CHOICES.now) return true;
+  quitWhenIdle = choice === CLOSE_CHOICES.whenFinished;
+  broadcast();
+  return false;
+}
+
+function quitNow() {
+  quitting = true;
+  app.quit();
+}
+
+// Carries out what was put off once the session concerned has gone idle.
+function closeFinished(id) {
+  const session = sessions.get(id);
+  if (closeWhenIdle.has(id) && session && busyReason(session) === null) terminateSession(id);
+  if (quitWhenIdle && sessions.list().every((live) => busyReason(live) === null)) quitNow();
 }
 
 // What another machine may ask of this one, through its inbox: end one of
@@ -945,7 +1003,14 @@ app.on("window-all-closed", () => {
 });
 app.on("will-quit", () => globalShortcut.unregisterAll());
 app.on("session-end", flushForQuit);
-app.on("before-quit", () => {
+// Every route out that has not already asked (the macOS menu, a second
+// app.quit) is stopped here once; `quitting` marks a quit that may proceed.
+app.on("before-quit", (event) => {
+  if (!quitting && sessions && !confirmQuit()) {
+    event.preventDefault();
+    return;
+  }
+  quitting = true;
   flushForQuit();
   sessions?.killAll();
 });

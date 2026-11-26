@@ -66,7 +66,17 @@ function sameBounds(a, b) {
 // a window moves or resizes, so the monitor map follows and the layout is saved.
 // `onHotkey()` fires when a compositor that calls back (KWin) sees the hotkey,
 // `onCompositorStatus()` when the state of GNOME's extension changes.
-export function createWindowManager({ onSessionBounds, onBridgeBounds, onBridgeClose, onHotkey, onCompositorStatus }) {
+// `onSessionClosing(id)` and `onBridgeClosing()` are asked before a window the
+// user is closing goes; returning false keeps it open.
+export function createWindowManager({
+  onSessionBounds,
+  onBridgeBounds,
+  onBridgeClose,
+  onBridgeClosing,
+  onSessionClosing,
+  onHotkey,
+  onCompositorStatus,
+}) {
   const sessionWindows = new Map();
   // Title-bar state the renderer draws, keyed by BrowserWindow id: the
   // maximise toggle for every window, always-on-top and the close lock for
@@ -202,6 +212,9 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds, onBridgeC
     });
     openingTitles.set(bridge.id, BRIDGE_TITLE);
     bridge.on("page-title-updated", (event) => event.preventDefault());
+    bridge.on("close", (event) => {
+      if (onBridgeClosing?.() === false) event.preventDefault();
+    });
     bridge.on("closed", () => {
       bridge = null;
       onBridgeClose?.();
@@ -267,14 +280,17 @@ export function createWindowManager({ onSessionBounds, onBridgeBounds, onBridgeC
     });
     // Keep the OS-level title as the profile name; the page's <title> is not it.
     win.on("page-title-updated", (event) => event.preventDefault());
-    // A locked window ignores close entirely; a profile can also ask for a
-    // confirmation, since closing the window ends the Claude session.
+    // A locked window ignores close entirely. A session still working asks
+    // its own question, which stands in for the profile's confirmation; the
+    // profile can also ask every time, since closing ends the Claude session.
     win.on("close", (event) => {
       if (chromeFor(win).locked) {
         event.preventDefault();
         return;
       }
-      if (!session.profile.confirmClose) return;
+      const answer = onSessionClosing?.(session.id);
+      if (answer === false) event.preventDefault();
+      if (answer !== undefined || !session.profile.confirmClose) return;
       const choice = dialog.showMessageBoxSync(win, {
         type: "question",
         buttons: ["Close", "Keep open"],

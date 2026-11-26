@@ -29,6 +29,16 @@
   margin-top: 0;
 }
 
+.cards__notice {
+  flex: none;
+  margin: 0 16px 12px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ui-accent) 14%, var(--bg-elevated));
+  color: var(--fg);
+}
+
 .cards__empty {
   grid-column: 1 / -1;
   color: var(--fg-muted);

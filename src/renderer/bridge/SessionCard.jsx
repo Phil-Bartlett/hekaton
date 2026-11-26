@@ -123,6 +123,14 @@ export default function SessionCard({ session, now, fx, appearance, profiles, sh
             Remote
           </span>
         )}
+        {session.closingWhenFinished && (
+          <span
+            className="card__badge"
+            title="This window closes when the turn in progress finishes. Close it again and choose Keep open to cancel."
+          >
+            Closing
+          </span>
+        )}
         <Money usd={telemetry.totalCostUsd} fx={fx} className="card__cost" />
         <MenuButton open={menuOpen} onToggle={() => setMenuOpen((open) => !open)} />
       </header>

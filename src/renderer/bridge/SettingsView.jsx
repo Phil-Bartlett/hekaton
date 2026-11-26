@@ -109,6 +109,14 @@ function GeneralTab({ draft, patch, hotkeyError, update }) {
           <label>
             <input
               type="checkbox"
+              checked={draft.closeProtection !== false}
+              onChange={(event) => patch({ closeProtection: event.target.checked })}
+            />{" "}
+            Ask before closing a window or quitting while a session is still working
+          </label>
+          <label>
+            <input
+              type="checkbox"
               checked={draft.notifyFinished !== false}
               onChange={(event) => patch({ notifyFinished: event.target.checked })}
             />{" "}

@@ -287,6 +287,11 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
         <TileControls state={state} ids={cards.filter((card) => card.kind === "live").map((card) => card.id)} />
         <LayoutControls layout={layout} onChange={(next) => bridge.saveSettings({ layout: next })} />
       </div>
+      {state.quitWhenFinished && (
+        <p className="cards__notice">
+          Hekaton will quit when the sessions still working have finished. Quit again and choose Cancel to stay open.
+        </p>
+      )}
       <section
         className={`cards${layout.density === "compact" ? " cards--compact" : ""}${layout.density === "list" ? " cards--list" : ""}`}
         onDragOver={(event) => {
