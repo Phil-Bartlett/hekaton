@@ -337,13 +337,25 @@ export function DormantCard({ entry, now, fx, appearance, profiles, showNames, d
 const EXTERNAL_STATES = { idle: "idle", busy: "running" };
 
 // A Claude Code session running on this machine that Hekaton did not launch.
-export function ExternalSessionCard({ session, now, appearance }) {
-  const name = session.name ?? session.cwd?.split(/[\\/]/).filter(Boolean).pop() ?? `pid ${session.pid}`;
+// One started from Remote Control has no terminal anywhere, so the only way
+// in is the Claude app.
+export function ExternalSessionCard({ session, now, fx, appearance }) {
+  const name =
+    session.title ?? session.name ?? session.cwd?.split(/[\\/]/).filter(Boolean).pop() ?? `pid ${session.pid}`;
   return (
     <article className="card card--external">
       <header className="card__head">
         <span className="card__name">{name}</span>
-        <span className="card__cost">pid {session.pid}</span>
+        {session.remoteControlId && (
+          <span className="card__badge" title="Connected to Remote Control: the Claude app can drive this session">
+            Remote
+          </span>
+        )}
+        {session.totalCostUsd > 0 ? (
+          <Money usd={session.totalCostUsd} fx={fx} className="card__cost" />
+        ) : (
+          <span className="card__cost">pid {session.pid}</span>
+        )}
       </header>
       <StateBar
         state={EXTERNAL_STATES[session.status] ?? session.status ?? "idle"}
@@ -351,10 +363,25 @@ export function ExternalSessionCard({ session, now, appearance }) {
         now={now}
         appearance={appearance}
       />
-      <p className="card__prompt" title={session.cwd ?? ""}>
-        {session.cwd}
+      <p className="card__prompt" title={session.lastPrompt ?? session.cwd ?? ""}>
+        {session.lastPrompt ?? session.cwd}
       </p>
-      <p className="card__note">Running outside Hekaton</p>
+      <CardLinks links={session.links} />
+      {session.remoteControlId && (
+        <div className="card__links">
+          <button
+            type="button"
+            className="card__link"
+            title="Open this session in the Claude app"
+            onClick={() => window.hekaton.link.open(`https://claude.ai/code/${session.remoteControlId}`)}
+          >
+            Open on claude.ai
+          </button>
+        </div>
+      )}
+      <p className="card__note" title={session.cwd ?? ""}>
+        {session.entrypoint === "sdk-cli" ? "Started from Remote Control" : "Running outside Hekaton"}
+      </p>
     </article>
   );
 }

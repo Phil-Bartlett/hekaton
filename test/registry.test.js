@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { readRegistry } from "../src/main/registry.js";
+import { readRegistry, sameProcess } from "../src/main/registry.js";
 
 let dir;
 
@@ -44,11 +44,43 @@ describe("readRegistry", () => {
       statusSince: 150,
       startedAt: 100,
       version: null,
+      entrypoint: null,
+      remoteControlId: null,
+      procStart: null,
     });
     expect(readRegistry(dir)[1].statusSince).toBe(200);
   });
 
+  it("reads how a session was started and its Remote Control id", () => {
+    write("1.json", {
+      pid: process.pid,
+      sessionId: "rc",
+      entrypoint: "sdk-cli",
+      bridgeSessionId: "session_01abc",
+      procStart: "134401669485577823",
+    });
+    expect(readRegistry(dir)[0]).toMatchObject({
+      entrypoint: "sdk-cli",
+      remoteControlId: "session_01abc",
+      procStart: "134401669485577823",
+    });
+  });
+
   it("returns nothing for a missing folder", () => {
     expect(readRegistry(path.join(dir, "missing"))).toEqual([]);
+  });
+});
+
+describe("sameProcess", () => {
+  const row = { pid: 42, procStart: "100" };
+
+  it("keeps a row until its start time is known to differ", () => {
+    expect(sameProcess(row, new Map())).toBe(true);
+    expect(sameProcess(row, new Map([["42/100", true]]))).toBe(true);
+    expect(sameProcess(row, new Map([["42/100", false]]))).toBe(false);
+  });
+
+  it("does not carry a verdict over to a new Claude that reuses the pid", () => {
+    expect(sameProcess({ pid: 42, procStart: "200" }, new Map([["42/100", false]]))).toBe(true);
   });
 });

@@ -8,6 +8,7 @@ import { createFx } from "./fx.js";
 import { createHistory } from "./history.js";
 import { createInstances, summarise } from "./instances.js";
 import { computeBounds } from "./placement.js";
+import { createExternalTails } from "./external.js";
 import { readRegistry, watchRegistry } from "./registry.js";
 import { scanReference } from "./scanner.js";
 import { listConversations } from "./conversations.js";
@@ -74,6 +75,7 @@ let tray = null;
 let updater = null;
 let quitting = false;
 let registry = [];
+let externalTails = null;
 // Where the windows were before the last tile, for its undo.
 let untile = null;
 const recorded = new Set();
@@ -196,13 +198,17 @@ function recordInstance(id) {
 }
 
 // Sessions Claude Code knows about that this app did not launch.
-function externalSessions() {
+function externalRows() {
   const own = new Set();
   for (const session of sessions.list()) {
     own.add(session.sessionId);
     if (session.telemetry.claudeSessionId) own.add(session.telemetry.claudeSessionId);
   }
   return registry.filter((row) => !own.has(row.sessionId));
+}
+
+function externalSessions() {
+  return externalRows().map((row) => externalTails.view(row));
 }
 
 // A saved card whose conversation is still running somewhere (a crash left
@@ -907,8 +913,10 @@ app.whenReady().then(async () => {
   fleet.start();
   applyMemoryMirror();
   applyHub();
+  externalTails = createExternalTails(broadcast);
   watchRegistry((rows) => {
     registry = rows;
+    externalTails.sync(externalRows());
     broadcast();
   });
   applyTray(store.settings().keepInTray);

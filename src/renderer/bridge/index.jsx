@@ -359,6 +359,7 @@ function Dashboard({ state, onEditProfile, onNewProfile }) {
             key={session.sessionId}
             session={session}
             now={now}
+            fx={state.fx}
             appearance={state.settings.statusAppearance}
           />
         ))}
